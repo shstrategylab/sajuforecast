@@ -15,11 +15,32 @@ function buildPrompt(saju, inputData) {
     ohengCount, sipseongMap,
     chungs, hyeongs, haps, samhaps, banghaps,
     gongmang, yeokma, dohwa,
-    jijis, chars
+    jijis, chars, _meta
   } = saju;
 
   const rangeLabel = analysisRange === 'all' ? '일생 전체' : `향후 ${analysisRange}년`;
   const siStr = siju ? `${siju}(${hourStr.split('(')[0]})` : '시주 미상';
+
+  // 데이터 정밀도 안내 (만세력 DB / 절기 DB 실제 조회 여부)
+  const meta = _meta || {};
+  const precisionNotes = [];
+  if (meta.iljuPrecise) {
+    precisionNotes.push(`일주는 만세력 DB(${meta.iljuSource === 'daily_cache' ? '일일 캐시 직접 조회' : '연도 기준일 환산'})로 정밀 산출됨`);
+  } else {
+    precisionNotes.push('⚠ 일주는 만세력 DB 범위를 벗어나 근사 공식으로 계산됨 (오차 가능)');
+  }
+  if (meta.woljuPrecise) {
+    const gt = meta.governingTerm;
+    precisionNotes.push(`월주는 절기 DB 기준 정밀 산출됨 (적용 절기: ${gt ? gt.name + ' ' + gt.date : '-'})`);
+  } else {
+    precisionNotes.push('⚠ 월주는 절기 DB 범위를 벗어나 월 숫자 기준 근사치로 계산됨 (오차 가능, 특히 월초/월말 출생자 주의)');
+  }
+  if (meta.daeunPrecise) {
+    precisionNotes.push('대운 시작 나이는 절기까지의 실제 일수 ÷ 3 공식으로 정밀 산출됨');
+  } else {
+    precisionNotes.push('⚠ 대운 시작 나이는 절기 DB 범위를 벗어나 근사치로 계산됨 (오차 가능)');
+  }
+  const precisionDesc = precisionNotes.map(n => `  - ${n}`).join('\n');
 
   // 오행 강약 서술
   const ohengDesc = Object.entries(ohengCount)
@@ -86,6 +107,9 @@ function buildPrompt(saju, inputData) {
   ${siju ? '' : '※ 시주 미상 — 시주 관련 분석은 참고 수준으로만 제시'}
 
   일간(日干) : ${ilgan} (${CHEONGAN_KO[ilgan]})
+
+  [데이터 산출 근거 — 만세력 DB(1950~2050)·절기 DB(2010~2050) 연동 결과]
+${precisionDesc}
 
 ──────────────────────────────────────────────────────────────
 【 2. 원국(原局) 분석 — 반드시 아래 6개 항목 전부 서술 】
