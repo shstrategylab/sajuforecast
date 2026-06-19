@@ -6916,4 +6916,12 @@ const SolarTerms = {
   }
 };
 
-export default SolarTerms;
+// 일반 <script> 태그 로드 환경(브라우저, file://)을 위한 전역 노출.
+if (typeof window !== 'undefined') {
+  window.SolarTerms = SolarTerms;
+  window.solarTermsDB = solarTermsDB;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SolarTerms;
+  module.exports.default = SolarTerms;
+}
