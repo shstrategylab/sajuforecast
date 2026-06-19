@@ -342,10 +342,65 @@ function findGoverningTerm(year, month, day) {
   return null; // 절기 DB 범위를 벗어남
 }
 
+// ── 절기 DB 범위 밖 폴백용: 12절의 양력 평균 경계일 (2010~2050년 절기 DB 통계 기반) ──
+// 절기는 매년 ±1~2일 내에서만 변동하므로, 평균값을 고정 경계일로 사용하면
+// 단순 "월 숫자 매핑"보다 훨씬 정확하다 (특히 매월 1~8일 출생자의 월 경계 오류 방지).
+// { 월(양력), 일(경계 시작일), 지지 } — 해당 날짜부터 그 지지의 달이 시작됨
+const WOLGEON_FIXED_DATES = [
+  { month: 2,  day: 4,  ji: '寅' }, // 입춘
+  { month: 3,  day: 6,  ji: '卯' }, // 경칩
+  { month: 4,  day: 5,  ji: '辰' }, // 청명
+  { month: 5,  day: 5,  ji: '巳' }, // 입하
+  { month: 6,  day: 6,  ji: '午' }, // 망종
+  { month: 7,  day: 7,  ji: '未' }, // 소서
+  { month: 8,  day: 7,  ji: '申' }, // 입추
+  { month: 9,  day: 8,  ji: '酉' }, // 백로
+  { month: 10, day: 8,  ji: '戌' }, // 한로
+  { month: 11, day: 7,  ji: '亥' }, // 입동
+  { month: 12, day: 7,  ji: '子' }, // 대설
+  { month: 1,  day: 5,  ji: '丑' }  // 소한
+];
+
+// 절기 DB 범위 밖 생년월일의 월지를 고정 경계일 테이블로 근사 판정
+function getApproxWolji(month, day) {
+  // 월/일을 "연중 일련번호"로 변환해 비교 (1/1=1 ~ 12/31=365 근사, 윤년 오차는 무시 가능 수준)
+  const monthDayToOrdinal = (m, d) => m * 31 + d; // 31 곱은 월 비교 우선순위만 보장하면 충분
+  const target = monthDayToOrdinal(month, day);
+
+  // WOLGEON_FIXED_DATES를 연중 순서(1월 소한 포함)로 정렬한 버전 필요
+  const sorted = [
+    { month: 1,  day: 5,  ji: '丑' },
+    { month: 2,  day: 4,  ji: '寅' },
+    { month: 3,  day: 6,  ji: '卯' },
+    { month: 4,  day: 5,  ji: '辰' },
+    { month: 5,  day: 5,  ji: '巳' },
+    { month: 6,  day: 6,  ji: '午' },
+    { month: 7,  day: 7,  ji: '未' },
+    { month: 8,  day: 7,  ji: '申' },
+    { month: 9,  day: 8,  ji: '酉' },
+    { month: 10, day: 8,  ji: '戌' },
+    { month: 11, day: 7,  ji: '亥' },
+    { month: 12, day: 7,  ji: '子' }
+  ];
+
+  let applicable = null;
+  for (const entry of sorted) {
+    if (monthDayToOrdinal(entry.month, entry.day) <= target) {
+      applicable = entry;
+    }
+  }
+  // target이 1/5(소한)보다 이전이면(즉 1/1~1/4) 전년도 子월(대설 다음)에 해당
+  if (!applicable) {
+    return '子';
+  }
+  return applicable.ji;
+}
+
 // ── 월주 산출 ────────────────────────────────────────────────
 // 정밀 모드: 절기 DB로 정확한 절(節) 경계를 찾아 월지를 확정하고,
 //           연간 기준 오호둔법으로 월간을 산출한다.
-// 폴백 모드: 절기 DB 범위를 벗어나면 월 숫자 기준 근사치를 사용한다 (오차 가능).
+// 폴백 모드: 절기 DB 범위를 벗어나면 12절 평균 경계일 테이블로 월지를 근사 판정한다
+//           (단순 월 숫자 매핑이 아니라 일자까지 반영하므로 매월 초 출생자도 오류가 적다).
 function getWolju(year, month, day, yeonjuOverride) {
   const yeonju = yeonjuOverride || getYeonju(year, month, day);
   const yeonganHanja = yeonju[0];
@@ -370,15 +425,12 @@ function getWolju(year, month, day, yeonjuOverride) {
     }
   }
 
-  // 폴백: 절기 DB 범위 밖 — 월 숫자 기준 근사 계산 (입춘=1월 기준 보정 포함)
-  const WOLJI_BY_MONTH = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
-  const WOLJU_CHEONGAN_BASE = { '甲':2,'己':2,'乙':4,'庚':4,'丙':6,'辛':6,'丁':8,'壬':8,'戊':0,'癸':0 };
-  // 양력 1월·2월 초는 전년도 인월 이전(축월)일 수 있으므로 대략 보정
-  let approxMonthIdx = month - 2; // 양력 2월≈인월(0) 기준 근사
-  if (approxMonthIdx < 0) approxMonthIdx += 12;
-  const baseIdx = WOLJU_CHEONGAN_BASE[yeonganHanja] ?? 0;
-  const cgIdx = (baseIdx + approxMonthIdx) % 10;
-  const ji = WOLJI_BY_MONTH[approxMonthIdx];
+  // 폴백: 절기 DB 범위 밖 — 12절 평균 경계일 테이블로 월지 근사 판정 (일자 반영)
+  const ji = day ? getApproxWolji(month, day) : WOLGEON_TERMS[(month + 10) % 12].ji;
+  const jiPosFromIn = WOLGEON_TERMS.findIndex(t => t.ji === ji);
+  const startCG = WOLGAN_START_BY_YEONGAN[yeonganHanja] || '丙';
+  const startIdx = CHEONGAN.indexOf(startCG);
+  const cgIdx = (startIdx + jiPosFromIn) % 10;
   return {
     gapja: CHEONGAN[cgIdx] + ji,
     precise: false,
