@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>인생 대소사 예측 프롬프트 생성기</title>
+  <title>사주 예측 프롬프트 생성기</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -13,15 +13,19 @@
       <div class="header-title">
         <span class="header-icon">☯</span>
         <div>
-          <h1>사주 예측 프롬프트 생성기</h1>
-          <p class="header-sub">생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다</p>
+          <h1 id="pageTitle">사주 예측 프롬프트 생성기</h1>
+          <p class="header-sub" id="pageSub">생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다</p>
         </div>
       </div>
+      <nav class="tab-nav">
+        <button class="tab-btn active" id="tabBtnPrompt" onclick="switchTab('prompt')">프롬프트 생성기</button>
+        <button class="tab-btn" id="tabBtnBaserate" onclick="switchTab('baserate')">베이스레이트 검증기</button>
+      </nav>
     </div>
   </header>
 
   <main>
-    <div class="layout">
+    <div class="layout" id="tabPrompt">
 
       <!-- LEFT: 입력 패널 -->
       <section class="panel input-panel">
@@ -165,6 +169,114 @@
       </section>
 
     </div>
+
+    <!-- ============ 베이스레이트 검증기 탭 ============ -->
+    <div class="layout" id="tabBaserate" style="display:none;">
+
+      <!-- LEFT: 입력 패널 -->
+      <section class="panel input-panel">
+        <h2 class="panel-title">베이스레이트 검증 입력</h2>
+        <p class="baserate-intro">
+          "사건이 있던 해"와 "아무 일 없던 해"에 같은 합·충·형·삼합 규칙을 동일하게 적용해,
+          그 규칙이 실제로 사건을 변별하는지 숫자로 확인합니다.
+          신호가 단순히 자주 발생하는 것뿐이라면 변별력은 0%p에 가깝게 나옵니다.
+        </p>
+
+        <div class="form-group">
+          <label>성별</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brGender" value="남" checked /> 남성</label>
+            <label class="radio-label"><input type="radio" name="brGender" value="여" /> 여성</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>달력 종류</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brCalendarType" value="양력" checked /> 양력</label>
+            <label class="radio-label"><input type="radio" name="brCalendarType" value="음력" /> 음력</label>
+          </div>
+        </div>
+
+        <div class="form-group" id="brLeapMonthGroup" style="display:none;">
+          <label class="check-label" style="padding:0.3rem 0;">
+            <input type="checkbox" id="brIsLeapMonth" /> 윤달(閏月)입니다
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="brBirthYear" id="brBirthYearLabel">태어난 해 (양력)</label>
+          <input type="number" id="brBirthYear" placeholder="예: 1973" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="brBirthMonth" id="brBirthMonthLabel">태어난 월</label>
+          <select id="brBirthMonth">
+            <option value="">월 선택</option>
+            <option value="1">1월</option><option value="2">2월</option>
+            <option value="3">3월</option><option value="4">4월</option>
+            <option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option>
+            <option value="9">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="brBirthDay" id="brBirthDayLabel">태어난 일</label>
+          <input type="number" id="brBirthDay" placeholder="예: 15" min="1" max="30" />
+        </div>
+
+        <div class="form-group" id="brConvertedDateNotice" style="display:none;"></div>
+
+        <div class="form-group">
+          <label for="brEndYear">분석 종료 연도 (보통 현재)</label>
+          <input type="number" id="brEndYear" placeholder="예: 2026" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="brEventYears">실제 사건이 있었던 연도 (쉼표로 구분)</label>
+          <textarea id="brEventYears" placeholder="예: 1995, 1997, 2003, 2013"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>삼합 인정 기준</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brSamhapMode" value="complete" checked /> 완성만 인정 (3글자 모두)</label>
+            <label class="radio-label"><input type="radio" name="brSamhapMode" value="loose" /> 반합도 인정 (2글자만)</label>
+          </div>
+        </div>
+
+        <button class="btn-generate" onclick="runBaseRate()">베이스레이트 계산하기 ☯</button>
+      </section>
+
+      <!-- RIGHT: 출력 패널 -->
+      <section class="panel output-panel">
+        <div class="output-header">
+          <h2 class="panel-title">베이스레이트 결과</h2>
+        </div>
+
+        <div class="output-box" id="baserateOutputBox" style="white-space:normal;">
+          <div class="placeholder">
+            <span class="placeholder-icon">☯</span>
+            <p>왼쪽에 생년월일시와<br/>실제 사건 연도를 입력하세요</p>
+            <p class="placeholder-sub">신호가 사건 해와 무사건 해를<br/>실제로 구분해내는지 검증합니다</p>
+          </div>
+        </div>
+
+        <div class="usage-guide">
+          <h3>결과 읽는 법</h3>
+          <ol>
+            <li><strong>변별력(%p)</strong> = 사건해 히트율 − 무사건해 히트율</li>
+            <li>0%p에 가까우면 그 임계값은 변별력이 없음 (어느 해든 비슷하게 걸림)</li>
+            <li>음수면 오히려 무사건 해에서 더 자주 뜸 (역효과)</li>
+            <li>+20%p 이상이면서 표본이 충분할 때만 유의미하게 볼 수 있음</li>
+            <li>사건 4건 내외로는 통계적 확신을 줄 수 없으니 참고용으로만 활용</li>
+          </ol>
+        </div>
+      </section>
+
+    </div>
   </main>
 
   <footer>
@@ -176,6 +288,9 @@
   <script src="js/data/manseryeok.js"></script>
   <script src="js/saju.js"></script>
   <script src="js/prompt.js"></script>
+  <script src="js/baserate.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/baserate-ui.js"></script>
+  <script src="js/tabs.js"></script>
 </body>
 </html>
