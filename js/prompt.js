@@ -6,7 +6,7 @@
 function buildPrompt(saju, inputData) {
   const {
     year, month, day, hourStr, gender,
-    currentYear, analysisRange, domains, specialNote
+    currentYear, analysisRange, domains, specialNote, lunarInfo
   } = inputData;
 
   const {
@@ -20,6 +20,11 @@ function buildPrompt(saju, inputData) {
 
   const rangeLabel = analysisRange === 'all' ? '일생 전체' : `향후 ${analysisRange}년`;
   const siStr = siju ? `${siju}(${hourStr.split('(')[0]})` : '시주 미상';
+
+  // 음력으로 입력된 경우, 원본 음력 날짜와 변환된 양력 날짜를 함께 표기
+  const birthDateLine = lunarInfo
+    ? `${year}년 ${month}월 ${day}일 (양력) — 음력 ${lunarInfo.year}년 ${lunarInfo.month}월 ${lunarInfo.day}일${lunarInfo.isLeapMonth ? '(윤달)' : ''}을 양력으로 변환함`
+    : `${year}년 ${month}월 ${day}일 (양력)`;
 
   // 데이터 정밀도 안내 (만세력 DB / 절기 DB 실제 조회 여부)
   const meta = _meta || {};
@@ -95,7 +100,7 @@ function buildPrompt(saju, inputData) {
 【 1. 사주 기본 정보 】
 ──────────────────────────────────────────────────────────────
 
-  생년월일 : ${year}년 ${month}월 ${day}일 (양력)
+  생년월일 : ${birthDateLine}
   태어난 시 : ${siStr}
   성별      : ${gender}
 
