@@ -36,12 +36,26 @@
         </div>
 
         <div class="form-group">
-          <label for="birthYear">태어난 해 (양력)</label>
-          <input type="number" id="birthYear" placeholder="예: 1985" min="1900" max="2100" />
+          <label>달력 종류</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="calendarType" value="양력" checked /> 양력</label>
+            <label class="radio-label"><input type="radio" name="calendarType" value="음력" /> 음력</label>
+          </div>
+        </div>
+
+        <div class="form-group" id="leapMonthGroup" style="display:none;">
+          <label class="check-label" style="padding:0.3rem 0;">
+            <input type="checkbox" id="isLeapMonth" /> 윤달(閏月)입니다
+          </label>
         </div>
 
         <div class="form-group">
-          <label for="birthMonth">태어난 월</label>
+          <label for="birthYear" id="birthYearLabel">태어난 해 (양력)</label>
+          <input type="number" id="birthYear" placeholder="예: 1985" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="birthMonth" id="birthMonthLabel">태어난 월</label>
           <select id="birthMonth">
             <option value="">월 선택</option>
             <option value="1">1월</option><option value="2">2월</option>
@@ -54,9 +68,11 @@
         </div>
 
         <div class="form-group">
-          <label for="birthDay">태어난 일</label>
+          <label for="birthDay" id="birthDayLabel">태어난 일</label>
           <input type="number" id="birthDay" placeholder="예: 15" min="1" max="31" />
         </div>
+
+        <div class="form-group" id="convertedDateNotice" style="display:none;"></div>
 
         <div class="form-group">
           <label for="birthHour">태어난 시 (시주)</label>
@@ -157,6 +173,7 @@
 
   <script src="js/data/solar_terms_db.js"></script>
   <script src="js/data/manse_100_db.js"></script>
+  <script src="js/data/manseryeok.js"></script>
   <script src="js/saju.js"></script>
   <script src="js/prompt.js"></script>
   <script src="js/main.js"></script>
