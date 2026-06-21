@@ -27,10 +27,14 @@
         });
 
         // 패널 표시/숨김 갱신
+        // class·aria-hidden뿐 아니라 인라인 style.display로도 직접 제어한다.
+        // (style.css에 [aria-hidden="true"]/.active 대응 규칙이 없어도
+        //  탭 전환이 항상 동작하도록 하기 위함)
         tabPanels.forEach(function (panel) {
           const isActive = panel.dataset.panel === target;
           panel.classList.toggle('active', isActive);
           panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+          panel.style.display = isActive ? '' : 'none';
         });
       });
     });
