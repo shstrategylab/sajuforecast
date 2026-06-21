@@ -1,296 +1,767 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>사주 예측 프롬프트 생성기</title>
-  <link rel="stylesheet" href="css/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>리경명리학(理鏡命理學) 프롬프트 생성기</title>
+<style>
+  :root{
+    --paper: #F3EEE3;
+    --paper-deep: #EAE2D2;
+    --ink: #2B2622;
+    --ink-soft: #5C5347;
+    --gold: #B68D40;
+    --rust: #A8512E;
+    --water: #3A5A6E;
+    --wood: #4B6A4D;
+    --line: rgba(43,38,34,0.14);
+    --radius: 2px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+
+  body{
+    background:
+      radial-gradient(circle at 18% 8%, rgba(182,141,64,0.07), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(58,90,110,0.06), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    font-family: "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+    line-height:1.7;
+    min-height:100vh;
+    padding: 0 0 80px;
+  }
+
+  /* texture */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .wrap{
+    position:relative; z-index:1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 56px 24px 0;
+  }
+
+  header.hero{
+    text-align:center;
+    margin-bottom: 44px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--line);
+    position:relative;
+  }
+  header.hero .seal{
+    display:inline-block;
+    font-family: "Nanum Myeongjo", serif;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    color: var(--rust);
+    border: 1px solid var(--rust);
+    padding: 4px 12px;
+    margin-bottom: 22px;
+    border-radius: var(--radius);
+  }
+  header.hero h1{
+    font-size: clamp(28px, 5vw, 42px);
+    margin: 0 0 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  header.hero h1 .mirror{ color: var(--water); }
+  header.hero p.sub{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  header.hero .maxim{
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  section.panel{
+    background: #FBF8F0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px clamp(20px,4vw,40px);
+    margin-bottom: 28px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+
+  .panel-title{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin: 0 0 4px;
+    font-weight: 700;
+  }
+  .panel-heading{
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 22px;
+    color: var(--ink);
+  }
+
+  form{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 24px;
+  }
+  .field{ display:flex; flex-direction:column; gap:8px; }
+  .field.full{ grid-column: 1 / -1; }
+
+  label{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  input[type="text"], input[type="time"], input[type="date"], select{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 15px;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input:focus, select:focus{
+    border-color: var(--water);
+    box-shadow: 0 0 0 3px rgba(58,90,110,0.12);
+  }
+
+  .pillgroup{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pill{
+    position:relative;
+  }
+  .pill input{
+    position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; margin:0;
+  }
+  .pill span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 14px;
+    padding: 10px 18px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    background: #fff;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .pill input:checked + span{
+    border-color: var(--rust);
+    color: #fff;
+    background: var(--rust);
+  }
+
+  .time-unknown{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top: 4px;
+  }
+  .time-unknown input{ accent-color: var(--water); }
+
+  .actions{
+    grid-column: 1 / -1;
+    display:flex;
+    justify-content:flex-end;
+    margin-top: 6px;
+  }
+
+  button.generate{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: linear-gradient(135deg, var(--rust), #8a3f22);
+    border: none;
+    padding: 13px 30px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: 0 4px 14px rgba(168,81,46,0.28);
+  }
+  button.generate:hover{ transform: translateY(-1px); box-shadow: 0 6px 18px rgba(168,81,46,0.34); }
+  button.generate:active{ transform: translateY(0); }
+
+  /* result */
+  #resultPanel{ display:none; }
+
+  .result-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .chip{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 12px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--paper-deep);
+    color: var(--ink-soft);
+    border-left: 3px solid var(--gold);
+  }
+
+  .structure-note{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: rgba(75,106,77,0.07);
+    border-left: 3px solid var(--wood);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+  }
+  .structure-note b{ color: var(--wood); }
+
+  textarea#output{
+    width: 100%;
+    height: 320px;
+    resize: vertical;
+    font-family: "SF Mono","Menlo",monospace;
+    font-size: 12.5px;
+    line-height:1.6;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  .copybar{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .copybar .hint{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  button.copy{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--water);
+    background: #fff;
+    border: 1.4px solid var(--water);
+    padding: 10px 22px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  button.copy:hover{ background: var(--water); color:#fff; }
+  button.copy.copied{ background: var(--wood); border-color: var(--wood); color:#fff; }
+
+  .steps{
+    margin-top: 28px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .step-card{
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 16px 14px;
+    border-top: 3px solid var(--gold);
+  }
+  .step-card:nth-child(2){ border-top-color: var(--rust); }
+  .step-card:nth-child(3){ border-top-color: var(--water); }
+  .step-card .num{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.1em;
+  }
+  .step-card .label{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 14.5px;
+    font-weight:700;
+    margin-top: 4px;
+  }
+  .step-card .desc{
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+
+  footer{
+    text-align:center;
+    margin-top: 50px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 0.05em;
+  }
+
+  @media (max-width: 620px){
+    form{ grid-template-columns: 1fr; }
+    .steps{ grid-template-columns: 1fr; }
+    .wrap{ padding: 36px 16px 0; }
+    textarea#output{ height: 280px; }
+  }
+</style>
 </head>
 <body>
 
-  <header>
-    <div class="header-inner">
-      <div class="header-title">
-        <span class="header-icon">☯</span>
-        <div>
-          <h1 id="pageTitle">사주 예측 프롬프트 생성기</h1>
-          <p class="header-sub" id="pageSub">생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다</p>
-        </div>
-      </div>
-      <nav class="tab-nav">
-        <button class="tab-btn active" id="tabBtnPrompt" onclick="switchTab('prompt')">프롬프트 생성기</button>
-        <button class="tab-btn" id="tabBtnBaserate" onclick="switchTab('baserate')">베이스레이트 검증기</button>
-      </nav>
-    </div>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="seal">理 鏡 命 理 學</span>
+    <h1>리경<span class="mirror">명리</span>학 프롬프트 생성기</h1>
+    <p class="sub">이름 · 성별 · 양력/음력 · 생년월일시만 입력하면, 풀이 프롬프트 + 사건참조표가 하나로 합쳐져 나옵니다.</p>
+    <p class="maxim">"단순하게 볼수록 정확하다. 복잡하게 얽을수록 해석자가 길을 잃는다."</p>
   </header>
 
-  <main>
-    <div class="layout" id="tabPrompt">
+  <section class="panel">
+    <p class="panel-title">Step 1</p>
+    <h2 class="panel-heading">내담자 정보 입력</h2>
 
-      <!-- LEFT: 입력 패널 -->
-      <section class="panel input-panel">
-        <h2 class="panel-title">사주 정보 입력</h2>
+    <form id="genForm">
+      <div class="field">
+        <label for="name">이름</label>
+        <input type="text" id="name" placeholder="예: 임수현" required>
+      </div>
 
-        <div class="form-group">
-          <label>성별</label>
-          <div class="radio-row">
-            <label class="radio-label"><input type="radio" name="gender" value="남" checked /> 남성</label>
-            <label class="radio-label"><input type="radio" name="gender" value="여" /> 여성</label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>달력 종류</label>
-          <div class="radio-row">
-            <label class="radio-label"><input type="radio" name="calendarType" value="양력" checked /> 양력</label>
-            <label class="radio-label"><input type="radio" name="calendarType" value="음력" /> 음력</label>
-          </div>
-        </div>
-
-        <div class="form-group" id="leapMonthGroup" style="display:none;">
-          <label class="check-label" style="padding:0.3rem 0;">
-            <input type="checkbox" id="isLeapMonth" /> 윤달(閏月)입니다
+      <div class="field">
+        <label>성별</label>
+        <div class="pillgroup">
+          <label class="pill">
+            <input type="radio" name="gender" value="여성" checked>
+            <span>여성</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="gender" value="남성">
+            <span>남성</span>
           </label>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="birthYear" id="birthYearLabel">태어난 해 (양력)</label>
-          <input type="number" id="birthYear" placeholder="예: 1985" min="1900" max="2050" />
-        </div>
-
-        <div class="form-group">
-          <label for="birthMonth" id="birthMonthLabel">태어난 월</label>
-          <select id="birthMonth">
-            <option value="">월 선택</option>
-            <option value="1">1월</option><option value="2">2월</option>
-            <option value="3">3월</option><option value="4">4월</option>
-            <option value="5">5월</option><option value="6">6월</option>
-            <option value="7">7월</option><option value="8">8월</option>
-            <option value="9">9월</option><option value="10">10월</option>
-            <option value="11">11월</option><option value="12">12월</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="birthDay" id="birthDayLabel">태어난 일</label>
-          <input type="number" id="birthDay" placeholder="예: 15" min="1" max="31" />
-        </div>
-
-        <div class="form-group" id="convertedDateNotice" style="display:none;"></div>
-
-        <div class="form-group">
-          <label for="birthHour">태어난 시 (시주)</label>
-          <select id="birthHour">
-            <option value="모름">시를 모름</option>
-            <option value="子시(23:30~01:30)">子시 (23:30~01:30)</option>
-            <option value="丑시(01:30~03:30)">丑시 (01:30~03:30)</option>
-            <option value="寅시(03:30~05:30)">寅시 (03:30~05:30)</option>
-            <option value="卯시(05:30~07:30)">卯시 (05:30~07:30)</option>
-            <option value="辰시(07:30~09:30)">辰시 (07:30~09:30)</option>
-            <option value="巳시(09:30~11:30)">巳시 (09:30~11:30)</option>
-            <option value="午시(11:30~13:30)">午시 (11:30~13:30)</option>
-            <option value="未시(13:30~15:30)">未시 (13:30~15:30)</option>
-            <option value="申시(15:30~17:30)">申시 (15:30~17:30)</option>
-            <option value="酉시(17:30~19:30)">酉시 (17:30~19:30)</option>
-            <option value="戌시(19:30~21:30)">戌시 (19:30~21:30)</option>
-            <option value="亥시(21:30~23:30)">亥시 (21:30~23:30)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="currentYear">분석 기준 연도</label>
-          <input type="number" id="currentYear" value="2025" min="1900" max="2100" />
-        </div>
-
-        <div class="form-group">
-          <label for="analysisRange">분석 기간</label>
-          <select id="analysisRange">
-            <option value="5">향후 5년</option>
-            <option value="10" selected>향후 10년</option>
-            <option value="20">향후 20년</option>
-            <option value="all">일생 전체</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>분석 요청 영역 (복수 선택)</label>
-          <div class="checkbox-grid">
-            <label class="check-label"><input type="checkbox" class="domain-check" value="결혼·동거·재혼" checked /> 결혼·동거</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="이혼·별거·이별" checked /> 이혼·이별</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="연애·이성운" checked /> 연애·이성</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="출산·자녀운" checked /> 출산·자녀</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="취업·승진·이직" checked /> 취업·승진</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="사업성패·창업" checked /> 사업·창업</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="재물획득·손실·투기" checked /> 재물·투기</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="건강이상·수술·질병" checked /> 건강·수술</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="사고·부상·재난" checked /> 사고·부상</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="소송·관재·법적문제" checked /> 소송·관재</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="이사·이민·해외운" /> 이사·이민</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="학업·시험·자격증" /> 학업·시험</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="명예·성공·몰락" checked /> 명예·성공</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="부모사망·형제갈등·가족운" /> 가족·육친</label>
-            <label class="check-label"><input type="checkbox" class="domain-check" value="사망·생사관련 극한운" /> 사망·생사</label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="specialNote">추가 요청사항 (선택)</label>
-          <textarea id="specialNote" placeholder="예: 특정 시점의 운세 집중 분석, 특정 사건에 대한 원인 분석 등"></textarea>
-        </div>
-
-        <button class="btn-generate" onclick="generatePrompt()">프롬프트 생성하기 ☯</button>
-      </section>
-
-      <!-- RIGHT: 출력 패널 -->
-      <section class="panel output-panel">
-        <div class="output-header">
-          <h2 class="panel-title">생성된 프롬프트</h2>
-          <button class="btn-copy" id="copyBtn" onclick="copyPrompt()" disabled>복사하기</button>
-        </div>
-
-        <div class="output-box" id="outputBox">
-          <div class="placeholder">
-            <span class="placeholder-icon">☯</span>
-            <p>왼쪽에서 사주 정보를 입력하고<br/>프롬프트 생성하기를 클릭하세요</p>
-            <p class="placeholder-sub">생성된 프롬프트를 복사하여<br/>Claude에 붙여넣어 사용하세요</p>
-          </div>
-        </div>
-
-        <div class="usage-guide">
-          <h3>사용 방법</h3>
-          <ol>
-            <li>좌측에 생년월일시와 성별 입력</li>
-            <li>분석받고 싶은 영역 선택</li>
-            <li><strong>프롬프트 생성하기</strong> 클릭</li>
-            <li><strong>복사하기</strong> 로 클립보드에 복사</li>
-            <li>Claude.ai 대화창에 붙여넣기</li>
-          </ol>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- ============ 베이스레이트 검증기 탭 ============ -->
-    <div class="layout" id="tabBaserate" style="display:none;">
-
-      <!-- LEFT: 입력 패널 -->
-      <section class="panel input-panel">
-        <h2 class="panel-title">베이스레이트 검증 입력</h2>
-        <p class="baserate-intro">
-          "사건이 있던 해"와 "아무 일 없던 해"에 같은 합·충·형·삼합 규칙을 동일하게 적용해,
-          그 규칙이 실제로 사건을 변별하는지 숫자로 확인합니다.
-          신호가 단순히 자주 발생하는 것뿐이라면 변별력은 0%p에 가깝게 나옵니다.
-        </p>
-
-        <div class="form-group">
-          <label>성별</label>
-          <div class="radio-row">
-            <label class="radio-label"><input type="radio" name="brGender" value="남" checked /> 남성</label>
-            <label class="radio-label"><input type="radio" name="brGender" value="여" /> 여성</label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>달력 종류</label>
-          <div class="radio-row">
-            <label class="radio-label"><input type="radio" name="brCalendarType" value="양력" checked /> 양력</label>
-            <label class="radio-label"><input type="radio" name="brCalendarType" value="음력" /> 음력</label>
-          </div>
-        </div>
-
-        <div class="form-group" id="brLeapMonthGroup" style="display:none;">
-          <label class="check-label" style="padding:0.3rem 0;">
-            <input type="checkbox" id="brIsLeapMonth" /> 윤달(閏月)입니다
+      <div class="field">
+        <label>양력 / 음력</label>
+        <div class="pillgroup">
+          <label class="pill">
+            <input type="radio" name="calendar" value="양력" checked>
+            <span>양력</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="calendar" value="음력">
+            <span>음력</span>
+          </label>
+          <label class="pill">
+            <input type="radio" name="calendar" value="음력(윤달)">
+            <span>음력(윤달)</span>
           </label>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="brBirthYear" id="brBirthYearLabel">태어난 해 (양력)</label>
-          <input type="number" id="brBirthYear" placeholder="예: 1973" min="1900" max="2050" />
+      <div class="field">
+        <label for="bdate">생년월일</label>
+        <input type="date" id="bdate" required>
+      </div>
+
+      <div class="field">
+        <label for="btime">출생 시각</label>
+        <input type="time" id="btime">
+        <div class="time-unknown">
+          <input type="checkbox" id="timeUnknown">
+          <label for="timeUnknown" style="font-weight:400; margin:0;">출생 시각 모름</label>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="brBirthMonth" id="brBirthMonthLabel">태어난 월</label>
-          <select id="brBirthMonth">
-            <option value="">월 선택</option>
-            <option value="1">1월</option><option value="2">2월</option>
-            <option value="3">3월</option><option value="4">4월</option>
-            <option value="5">5월</option><option value="6">6월</option>
-            <option value="7">7월</option><option value="8">8월</option>
-            <option value="9">9월</option><option value="10">10월</option>
-            <option value="11">11월</option><option value="12">12월</option>
-          </select>
-        </div>
+      <div class="field full">
+        <label for="memo">추가 메모 (선택)</label>
+        <input type="text" id="memo" placeholder="예: 출생지, 특이사항, 풀이자가 참고할 내용 등">
+      </div>
 
-        <div class="form-group">
-          <label for="brBirthDay" id="brBirthDayLabel">태어난 일</label>
-          <input type="number" id="brBirthDay" placeholder="예: 15" min="1" max="30" />
-        </div>
+      <div class="actions">
+        <button type="submit" class="generate">프롬프트 생성</button>
+      </div>
+    </form>
+  </section>
 
-        <div class="form-group" id="brConvertedDateNotice" style="display:none;"></div>
+  <section class="panel" id="resultPanel">
+    <p class="panel-title">Step 2</p>
+    <h2 class="panel-heading">생성된 프롬프트</h2>
 
-        <div class="form-group">
-          <label for="brEndYear">분석 종료 연도 (보통 현재)</label>
-          <input type="number" id="brEndYear" placeholder="예: 2026" min="1900" max="2050" />
-        </div>
+    <div class="result-meta" id="resultMeta"></div>
 
-        <div class="form-group">
-          <label for="brEventYears">실제 사건이 있었던 연도 (쉼표로 구분)</label>
-          <textarea id="brEventYears" placeholder="예: 1995, 1997, 2003, 2013"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>삼합 인정 기준</label>
-          <div class="radio-row">
-            <label class="radio-label"><input type="radio" name="brSamhapMode" value="complete" checked /> 완성만 인정 (3글자 모두)</label>
-            <label class="radio-label"><input type="radio" name="brSamhapMode" value="loose" /> 반합도 인정 (2글자만)</label>
-          </div>
-        </div>
-
-        <button class="btn-generate" onclick="runBaseRate()">베이스레이트 계산하기 ☯</button>
-      </section>
-
-      <!-- RIGHT: 출력 패널 -->
-      <section class="panel output-panel">
-        <div class="output-header">
-          <h2 class="panel-title">베이스레이트 결과</h2>
-        </div>
-
-        <div class="output-box" id="baserateOutputBox" style="white-space:normal;">
-          <div class="placeholder">
-            <span class="placeholder-icon">☯</span>
-            <p>왼쪽에 생년월일시와<br/>실제 사건 연도를 입력하세요</p>
-            <p class="placeholder-sub">신호가 사건 해와 무사건 해를<br/>실제로 구분해내는지 검증합니다</p>
-          </div>
-        </div>
-
-        <div class="usage-guide">
-          <h3>결과 읽는 법</h3>
-          <ol>
-            <li><strong>변별력(%p)</strong> = 사건해 히트율 − 무사건해 히트율</li>
-            <li>0%p에 가까우면 그 임계값은 변별력이 없음 (어느 해든 비슷하게 걸림)</li>
-            <li>음수면 오히려 무사건 해에서 더 자주 뜸 (역효과)</li>
-            <li>+20%p 이상이면서 표본이 충분할 때만 유의미하게 볼 수 있음</li>
-            <li>사건 4건 내외로는 통계적 확신을 줄 수 없으니 참고용으로만 활용</li>
-          </ol>
-        </div>
-      </section>
-
+    <div class="structure-note">
+      <b>구조 안내 —</b> 풀이 프롬프트(v5.2)와 사건참조표를 하나의 텍스트로 이어 붙였습니다.
+      참조표 앞에는 "서사에서 해당 사건이 실제로 읽힐 때만 사용한다"는 원본의 조건부 지시를 그대로 유지했습니다.
+      파일을 두 개로 나누던 것과 동일한 분리 원칙이 텍스트 안에 살아있으므로, 풀이 깊이는 유지됩니다.
     </div>
-  </main>
 
-  <footer>
-    <p>사주명리 기반 예측 프롬프트 생성기 · Claude AI 전용</p>
-  </footer>
+    <textarea id="output" readonly></textarea>
 
-  <script src="js/data/solar_terms_db.js"></script>
-  <script src="js/data/manse_100_db.js"></script>
-  <script src="js/data/manseryeok.js"></script>
-  <script src="js/saju.js"></script>
-  <script src="js/prompt.js"></script>
-  <script src="js/baserate.js"></script>
-  <script src="js/main.js"></script>
-  <script src="js/baserate-ui.js"></script>
-  <script src="js/tabs.js"></script>
+    <div class="copybar">
+      <span class="hint">아래 버튼으로 복사 → 클로드 대화창에 만세력 이미지와 함께 붙여넣기</span>
+      <button class="copy" id="copyBtn">전체 복사</button>
+    </div>
+
+    <div class="steps">
+      <div class="step-card">
+        <div class="num">USE 01</div>
+        <div class="label">만세력 이미지 첨부</div>
+        <div class="desc">새 클로드 대화창을 열고 만세력 이미지를 먼저 업로드합니다.</div>
+      </div>
+      <div class="step-card">
+        <div class="num">USE 02</div>
+        <div class="label">생성된 프롬프트 붙여넣기</div>
+        <div class="desc">복사한 텍스트를 같은 메시지 또는 같은 대화에 그대로 붙여넣습니다.</div>
+      </div>
+      <div class="step-card">
+        <div class="num">USE 03</div>
+        <div class="label">0~5단계 풀이 확인</div>
+        <div class="desc">필요 시 카드형 / 보고서형 HTML 추가 출력을 요청합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>리경명리학 — 이치(理)로 운명(命)을 비추는 거울(鏡) · 2026</footer>
+
+</div>
+
+<script>
+const PROMPT_V5 = `## 풀이 프롬프트 — 리경명리학(理鏡命理學) v5.2
+
+> 관통 원칙: 단순하게 볼수록 정확하다. 복잡하게 얽을수록 해석자가 길을 잃는다.
+
+> **v5.1 수정 사항**: 3단계 "세력 간 역학관계 정리"에 역학 구조도(화살표 다이어그램) 작성을 명문화. 기존 v5는 "구도를 그린다"는 표현만 있고 실제로 강제되는 산출물은 한 줄짜리 완료조건 문장뿐이라, 의도(전체 구도를 한눈에 보는 것)와 실제 결과물(문장 하나)이 어긋나 있었음.
+
+> **v5.2 수정 사항**: 인생 주요 사건 우선순위 기준 중 "② 용신·기신 거리" 항목에, 천간 투출과 지지 합(반합·삼합)을 같은 비중으로 두지 않도록 단서를 추가. 실제 검증 사례(1990년 庚午 — 배우자성 천간 투출만 있는 해 vs 1992년 壬申 — 배우자성이 지지로 들어오며 동시에 일지와 반합해 용신까지 함께 끌어온 해)에서, 천간 투출만 보고 지지 합으로 용신이 동반되는 경우를 충분히 우선하지 못해 시점을 2년 놓친 사례가 발견되어 보완함.
+
+### 리경명리학이란
+사주명리학의 뼈대 위에 리경(理鏡)의 독해 기법을 얹은 풀이 체계다.
+- 사주명리 — 태어날 때 부여된 기운의 지도. 이 사람이 어떤 구조를 타고났는가를 보여준다.
+- 리경 — 보이는 것 너머의 세력과 흐름을 꿰뚫는 독해 공식. 현상 → 숨은 세력 → 역학관계구도 → 운기 → 서사의 순서로 읽는다.
+
+리경명리학의 범위는 사주명리 + 리경 풀이 기법 적용까지다.
+이후 내담자와의 대화에서 언행을 살피며 나머지 퍼즐을 맞추는 것은 별개 단계(언행심리학 적용)다.
+
+### 입력 방식
+만세력 이미지를 첨부한다. 이미지에서 년·월·일·시의 천간·지지, 대운 흐름을 직접 읽어 풀이에 사용한다.
+이미지가 불명확하거나 일부 항목이 보이지 않을 경우, 확인된 항목만으로 풀이하고 불확실한 부분은 명시한다.
+※ 출생 시각을 모를 경우, 시주(時柱)는 추정하지 않는다. 0~4단계는 확인 가능한 년·월·일주만으로 풀고, 시주가 필요한 판단은 "시주 미확인으로 보류"라고 명시한다.
+
+### 출력 방식
+기본 출력은 마크다운(.md) 파일. 0단계부터 5단계까지 순서대로 서술형으로 기록한다.
+별도 요청이 있을 때만 카드형 HTML, 보고서형 HTML을 추가로 출력한다.
+**3단계는 형식과 무관하게 역학 구조도(화살표 다이어그램)를 반드시 포함한다** — MD 출력에서는 텍스트 화살표로, 카드형·보고서형 HTML에서는 시각적 다이어그램으로 표현한다. (하단 3단계 항목 참조)
+
+카드형 출력 원칙:
+- 키워드와 짧은 문장 중심으로 구성한다
+- 단계별로 카드를 나눠 한눈에 파악되게 한다
+- 풀이자가 설명할 때, 내담자가 들을 때 모두 직관적으로 이해되어야 한다
+- 복잡한 설명보다 단어가 이어지는 흐름으로 구성한다
+카드형 디자인 기준: 1) 톤 — 고급 한지 느낌, 배경 크림색, 세리프+산세리프 조합 2) 카드 구조 — 좌측 컬러 라인 + 제목 + 본문, 패딩 통일 3) 색상 — gold/rust/water/wood 4색만 사용 4) 반응형 — 모바일에서도 읽힌다
+
+보고서형 출력 원칙:
+- 텍스트 중심으로 구성한다. 카드형의 키워드 압축이 아니라 서술이 본체다
+- 0단계부터 5단계까지 단계별 제목 아래 풀이 내용이 길게 펼쳐지는 형태다
+- 내담자가 혼자 읽고 이해할 수 있는 밀도와 문장으로 작성한다
+- 인쇄하거나 파일로 전달할 때 그대로 쓸 수 있는 완결된 문서여야 한다
+- 시각 장식은 최소화하고 가독성과 여백을 우선한다. 단, 3단계의 역학 구조도는 예외로 시각 요소를 허용한다
+
+### 풀이 전 전제
+1. 각 단계를 순서대로 쌓는다. 단계를 건너뛰면 결과가 틀린다.
+2. 보이는 것만 읽고 결론 내지 않는다. 현상은 더 큰 흐름의 표면일 뿐이다.
+3. 복잡한 신살·형충·공망을 동시에 올려놓고 교차 해석하지 않는다. 상위 개념으로 읽히면 하위 개념은 따라온다.
+4. 결과가 예측과 다를 때 — 아직 읽지 못한 층위가 있다는 신호다.
+
+### 0단계 — 원국(原局) 전반 파악
+목적: 1~5단계 해석의 기준점을 잡는다. 여기서 방향을 잡아야 이후 단계가 흔들리지 않는다.
+핵심 질문: 이 사람은 어떤 사람으로 태어났는가?
+
+풀이 항목:
+| 항목 | 확인 내용 |
+|---|---|
+| 일간(日干) | 나의 본질 오행. 이 사람의 중심 기운 |
+| 월지(月支) | 태어난 계절·환경의 힘. 일간을 돕는가 극하는가 |
+| 일지(日支) | 배우자궁·내면의 기운. 일간과의 관계 |
+| 십성(十星) | 비겁·식상·재성·관성·인성의 분포. 사회적 관계망 구조 |
+| 격국(格局) | 이 사주의 삶의 패턴과 방향성 |
+| 오행 분포 | 강한 오행과 약한 오행. 균형과 편중 파악 |
+| 용신(用神) | 이 사주에 필요한 기운. 이후 대운 분석의 나침반 |
+
+### 1단계 — 보이는 현상
+리경 대응: 눈에 드러난 인물의 기운·행동·구조를 있는 그대로 읽는다. 판단이나 해석을 넣지 않고, 드러난 것 자체를 정확히 기술하는 것이 목표다.
+핵심 질문: 이 사람의 삶에서 무엇이 눈에 보이게 작동하고 있는가?
+풀이 항목:
+- 십성의 배치와 강약 — 어떤 십성이 드러나 있고, 어떤 십성이 약한가
+- 일간 기준 월지의 관계 — 환경이 나를 생하는가, 극하는가
+- 드러난 세력 구도 — 어떤 오행·십성이 힘을 갖고 있는가
+주의: 이 단계만으로 결론 내지 않는다. 단순한 구조나 개인 수준에서는 여기서 충분히 읽힐 수 있으나, 복잡한 삶일수록 이 단계는 시작일 뿐이다.
+
+### 2단계 — 숨은 세력
+리경 대응: 현상 뒤에는 반드시 보이지 않는 세력이 있다. 보이는 현상만 풀었는데 결과가 다르게 나올 때, 그것은 거의 항상 이 단계를 놓쳤기 때문이다.
+핵심 질문: 겉으로 드러나지 않는 진짜 힘은 무엇인가?
+
+풀이 항목:
+| 도구 | 확인 내용 |
+|---|---|
+| 지장간(地藏干) | 지지 속에 숨어있는 천간. 겉으로 안 보이지만 실제로 작동하는 세력 |
+| 암합(暗合) | 드러나지 않는 합. 의식하지 못하는 끌림과 결속 |
+| 공망(空亡) | 힘이 무력화되는 지점. 어떤 세력이 공허해지는가 |
+| 형충(刑沖) | 세력 간 충돌과 자극. 어떤 기운이 흔들리는가 |
+
+### 3단계 — 세력 간 역학관계 정리
+목적: 2단계에서 확인한 숨은 세력을 확인한 뒤, 원국 전체에서 어떤 세력이 어떤 세력을 생하고 극하는지 **역학 구조도(화살표 다이어그램)로 그린다**. 글로 풀어쓰는 것만으로는 여러 세력이 얽힌 전체 그림이 한눈에 보이지 않으므로, 생·극의 흐름을 화살표로 잇는 구조도를 문장 설명과 함께 반드시 작성한다. 이 구조도가 4단계 운기 분석의 토대다.
+
+핵심 질문: 이 원국에서 어떤 세력이 어떤 세력을 살리고, 어떤 세력이 어떤 세력을 꺾는가?
+
+풀이 항목:
+- 원국 전체에서 생(生)·극(剋) 구도를 정리한다
+- 어떤 세력이 중심에 있고, 어떤 세력이 그것을 뒷받침하거나 억누르는가
+- **생·극의 흐름을 화살표 구조도로 표시한다.** 예: 식상(火) → 재성(土) → 관성(金) → 剋 → 일간(木). 원국에 없는 세력(용신 등 공백)은 구조도 안에 "부재"로 별도 표기해, 채워야 할 빈자리도 한눈에 보이게 한다
+- 4단계에서 주목할 핵심 세력을 명시한다
+
+⚑ 3단계 완료 조건 — 다음 두 가지를 모두 완성한 뒤 4단계로 넘어간다:
+1. **문장**: "___ 세력이 ___ 세력을 生하고, ___ 세력이 ___ 세력을 剋한다. 따라서 4단계에서 주목할 핵심 세력은 ___이다."
+2. **역학 구조도**: 위 문장에 쓰인 세력들의 생·극 흐름을 화살표로 그린 구조도. MD 출력에서는 텍스트 화살표(→, ↓, 剋 표기)로, 카드형·보고서형 HTML 출력에서는 시각적 다이어그램(SVG·도형)으로 표현한다.
+
+### 4단계 — 운기(運氣) 분석
+리경 대응: 세력의 존재를 확인했다면, 그 세력의 기운이 지금 오르는 중인지 내려가는 중인지를 봐야 한다. 운이 오르는 세력이 뒤를 받치면 앞의 인물도 힘을 얻는다. 아무리 강한 세력도 운이 다하면 꺾인다.
+핵심 질문: 그 세력이 지금 살아나고 있는가, 죽어가고 있는가?
+
+풀이 항목:
+| 도구 | 확인 내용 |
+|---|---|
+| 대운(大運) | 10년 주기 흐름. 천간·지지를 각각 읽는다. 천간은 직접적 기운, 지지는 환경적 기운. 둘 다 원국 세력 및 용신과의 관계를 확인한다. 3단계에서 정리한 핵심 세력이 살아나는가 꺾이는가를 중심으로 읽는다 |
+| 세운(歲運) | 1년 단위 점검. 천간·지지를 각각 읽는다. 대운의 흐름 안에서 세부 기운을 확인한다 |
+| 용신 방향 | 현재 대운·세운의 천간과 지지가 각각 용신을 살리는가, 죽이는가 |
+판단 기준:
+- 원국의 강한 세력 + 대운이 생(生) → 힘이 폭발하는 시기
+- 원국의 강한 세력 + 대운이 극(剋) → 저항과 충돌의 시기
+- 원국의 약한 세력 + 대운이 생(生) → 균형 회복, 안정의 시기
+- 원국의 약한 세력 + 대운이 극(剋) → 소진과 고갈의 시기
+
+### 5단계 — 운명 서사(運命 敍事)
+리경 대응: 모든 세력의 운기는 결국 더 큰 흐름과 함께 간다. 1~4단계에서 읽은 것들을 하나의 이야기로 꿰는 단계.
+핵심 질문: 이 사람은 왜 이렇게 태어났는가?
+풀이 원칙: 좋은 것도 나쁜 것도 설명이 되어야 서사가 된다. "왜 그 시기에 그렇게 힘들었는지, 왜 그것이 이 사람에게 필요했는지"가 납득되는 언어로 나와야 한다. 납득이 되면 — 남은 인생을 의미 있게 산다.
+
+서사 구성 요소:
+| 요소 | 내용 |
+|---|---|
+| 힘든 시기의 이유 | 왜 그때 그랬는가. 어떤 세력의 충돌이었는가 |
+| 사회적 역할·소명 | 이 사람은 어떤 역할을 위해 태어났는가 |
+| 앞으로의 방향 | 어떤 기운을 살리고, 어떤 기운을 경계해야 하는가 |
+| 인생 주요 사건 | 1~4단계에서 읽은 세력과 운기를 사건 단위로 도출한다. 사건은 별도로 찾는 것이 아니라, 세력과 운기가 교차하는 지점에서 자연스럽게 나온다. 후보가 여러 개일 때는 ① 통근강도 → ② 용신·기신 거리 → ③ 공망·형충 여부 → ④ 대운·세운 동시 생조, 네 기준을 순서대로 적용해 1순위는 단정, 2순위까지만 보조로 제시한다. **②(용신·기신 거리)를 적용할 때, 천간 투출과 지지 합(반합·삼합)을 같은 비중으로 두지 않는다 — 지지가 일지·세운지지와 합을 이루어 용신을 함께 끌어오는 경우를 천간 단독 투출보다 더 강한 신호로 우선한다.** 같은 영역(예: 배우자운)이라도 사건마다 작동 메커니즘이 다를 수 있으므로(일지 충=생활기반 균열 / 십성이 직접 배우자성을 극함=관계 자체의 타격) 하나로 묶지 않고 구분한다 |
+| 구조적 솔루션 | 공망·형충·기신 등 구조적 제약이 있을 때 "하지 말라"로 끝내지 않는다. 그 제약 안에서 작동하는 방식을 제시한다. 혼자 직접 하기 어려운 구조라면 — 용신 오행의 배우자·파트너를 통해 그 기운을 보완하는 방법을 제안한다. 은둔·독립이 맞는 구조라면 그에 맞는 현실적 방식을 제시한다. 솔루션은 구조에서 나온다. |
+| 종합 서사 | 0~5단계 전체를 하나의 완성된 문장으로 압축한다. 태어나서 죽을 때까지 — 타고난 기운, 청년기, 중년기, 말년, 마무리가 하나의 흐름으로 납득되어야 한다. 말년 대운까지 반드시 포함한다. 단순한 요약이 아니라 — 이 사람이 이 문장으로 자신의 삶 전체를 이해할 수 있어야 한다. |
+
+풀이자 주석: 이 사람의 기운이 지금 시대와 어떻게 맞닿는지는 풀이자가 별도로 판단한다. 사주 원국에서 도출되는 항목이 아니므로 서사에 억지로 끼워넣지 않는다.
+
+인생 주요 사건 도출 원칙:
+사건은 결론이 아니라 서사의 일부다. "그때 왜 그런 일이 있었는가"가 납득될 때 비로소 사건이 의미를 갖는다.
+사건은 별도로 찾지 않는다. 0~4단계에서 읽은 세력과 운기를 서술하다 보면 사건은 자연스럽게 따라온다.
+사건을 도출하기 전, 반드시 먼저 확인한다: 그 기운이 이 원국에 존재하는가. 존재한다면 살아있는가, 공망·형충으로 무력화되어 있는가.
+- 기운이 없거나 무력화된 경우 → 시점을 찾지 않는다. "왜 이 사람의 삶에 그 사건이 없는가"를 서사로 읽는 것이 맞다.
+- 기운이 있고 살아있는 경우 → 대운·세운에서 그 기운이 생조되는 시점을 도출한다. 그 시점이 사건의 발생점인지, 누적된 흐름의 종결 트리거인지도 함께 구분해서 밝힌다.
+
+▶ 결혼·별거·이혼·재결합·새 인연·건강·재물·승진 등 사건별 세부 독해 기준은 이 프롬프트 하단에 이어붙인 "사건참조표"를 확인한다.
+※ 단, 풀이 중 해당 사건이 서사에서 실제로 읽힐 때만 그 항목을 꺼내 쓴다. 처음부터 참조표 항목을 순서대로 채우지 않는다. 참조표는 체크리스트가 아니라, 서사가 가리킬 때만 펼치는 부속 도구다.
+
+주의: 나라를 망하게 하려고 태어난 사람은 없다. 자기 살려고 하다 보니 그리 되기도 하고, 안 죽고 열심히 살려다 보니 나라를 구하는 인물이 되기도 한다. 서사는 단죄가 아니라 이해와 방향 제시여야 한다.
+
+### 풀이 순서 요약
+\`\`\`
+만세력 이미지 첨부
+        ↓
+0단계 원국 파악          →  기준점 확보
+        ↓
+1단계 보이는 현상        →  십성·드러난 구조 기술
+        ↓
+2단계 숨은 세력          →  지장간·암합·공망·형충
+        ↓
+3단계 세력 간 역학관계 정리  →  生·剋 구도 완성(문장) + 역학 구조도(화살표 다이어그램) + 핵심 세력 명시
+        ↓
+4단계 운기 분석          →  대운·세운·용신 방향
+        ↓
+5단계 운명 서사          →  1~4단계를 꿰어 납득되는 이야기로
+                              + 인생 주요 사건(결혼·건강·재물·승진) 도출
+        ↓
+출력: MD 파일 (기본, 3단계엔 텍스트 화살표 구조도 포함)
+추가 요청 시: 카드형 HTML 파일 / 보고서형 HTML 파일 (3단계엔 시각 다이어그램 포함)
+\`\`\`
+
+### 오독 경보
+| 오독 유형 | 증상 | 교정 |
+|---|---|---|
+| 현상만 읽는 오독 | 십성·원국만 보고 결론 낸다 | 2단계 지장간을 반드시 확인한다 |
+| 세력만 보는 오독 | 숨은 세력은 찾았지만 운기를 안 본다 | 4단계에서 대운과의 생극을 확인한다 |
+| 구도를 문장으로만 끝내는 오독 | 3단계를 완료조건 문장 한 줄로 끝내고 넘어간다 | 반드시 화살표 구조도를 함께 작성해 전체 그림을 눈으로 확인한다 |
+| 미시에 갇히는 오독 | 원국·대운은 잘 읽지만 시대 흐름을 놓친다 | 5단계에서 시대와의 정합성을 대조한다 |
+| 복잡하게 얽는 오독 | 신살·형충을 동시에 올려놓고 교차 해석한다 | 단순하게 본다. 상위 개념이 읽히면 하위는 따라온다 |
+| 사건을 앞당겨 읽는 오독 | 1~2단계만 보고 결혼·재물을 단정한다 | 반드시 4단계 운기와 교차한 뒤 사건을 도출한다 |
+| 있다는 전제로 읽는 오독 | 결혼·재물·직장이 모든 사람에게 있다고 가정하고 시점만 찾는다 | 먼저 그 기운이 원국에 존재하는지 확인한다. 없으면 시점이 아니라 서사로 읽는다 |
+| 참조표를 체크리스트로 쓰는 오독 | 사건참조표 항목을 처음부터 순서대로 채운다 | 서사를 먼저 쓴다. 참조표는 특정 사건이 읽힐 때만 꺼내 쓰는 도구다 |`;
+
+const EVENT_TABLE = `## 부속 도구 — 인생 주요 사건 참조표
+> 이 표는 체크리스트가 아니다. 풀이 중 특정 사건이 서사에서 실제로 읽힐 때, 그 사건 항목만 꺼내 확인하는 도구다. 처음부터 항목을 순서대로 채우면 서사가 아니라 보고서가 된다.
+> 위 본문 5단계를 먼저 끝까지 서술한 뒤, 서사가 가리키는 사건만 아래에서 골라 확인한다.
+
+선행 확인(모든 사건 공통): 그 기운이 이 원국에 존재하는가. 존재한다면 살아있는가, 무력화되어 있는가.
+- 기운이 없거나 공망·형충으로 무력화된 경우 → 시점을 찾지 않는다. "왜 이 사람의 삶에 그 사건이 없는가"를 서사로 읽는다.
+- 기운이 있고 살아있는 경우 → 아래 해당 사건 항목에서 시점을 도출한다.
+
+[결혼·배우자]
+선행 확인: 배우자성(여성=관성/남성=재성)이 원국에 존재하는가. 공망·형충·극파로 무력화되어 있는가. 일지(배우자궁) 상태는 어떤가. 배우자성이 용신 오행인가, 기신 오행인가.
+기운이 있는 경우: 배우자성이 대운·세운에서 투간되는 시점이 결혼 시기. **단, 천간 투출만 있는 시점과, 지지가 일지(또는 세운지지)와 합을 이루어 용신까지 함께 들어오는 시점이 둘 다 후보일 때는 후자를 우선한다 — 배우자성과 용신이 동시에 작동하는 시점이 실제 결혼 성사력이 더 강하다.** 배우자 일간이 내 용신 오행이면 나를 살리는 관계. 단 용신이 너무 강하면 제련이 아니라 녹이는 관계가 될 수 있다 — 이중 구조를 반드시 확인한다.
+기운이 없는 경우: 배우자성이 없거나 공망·극파된 경우 → 인연이 없거나 늦거나 형식 없는 관계. 몇 번이냐보다 왜 그런 구조로 태어났는가를 읽는다.
+
+[별거·이혼]
+선행 확인: 일지가 형충·극파를 받는 대운·세운이 있는가. 배우자성이 겁재·비견에 극을 받는 구간이 있는가.
+기운이 있는 경우: 일지 충(생활 기반의 균열)과, 십성이 배우자성을 직접 극하는 시점(관계 자체의 타격)은 서로 다른 메커니즘이다. 두 시점이 같을 수도, 다를 수도 있다 — 같은 사건으로 단정하지 말고 각각 확인한다. 일지 충만 있는 시점은 별거·균열로, 배우자성이 직접 극을 받는 시점은 이혼·관계의 실질적 종결 또는 그 종결을 더 이상 미룰 수 없게 만드는 트리거로 구분해서 읽는다. 반복되면 재결합 후 재분리의 구조로 읽는다.
+기운이 없는 경우: 일지가 안정적이고 배우자성이 생조받는 원국 → 한 사람과 오래 가는 구조. 갈등은 있어도 분리로 가지 않는다.
+
+[제3자 개입]
+선행 확인: 일지 충과 배우자성 재투간이 같은 대운·세운에서 겹치는가. 겁재·비견이 배우자성을 치는 구간이 원국에 있고, 대운·세운에서 활성화되는가.
+기운이 있는 경우: 일지 충 + 배우자성 재투간이 같은 시점에 겹치면 새 인연이 기존 관계 붕괴의 직접 원인이 된 구조. 겁재·비견이 배우자성을 탈취하는 구간이 활성화되면 제3자로 인한 관계 균열의 시점. 별거·이혼 시점과 반드시 교차 확인한다.
+기운이 없는 경우: 일지가 안정적이고 겁재·비견이 배우자성을 치는 구조가 없는 원국 → 제3자 개입 없이 내부 갈등으로만 흔들리는 구조.
+
+[재결합·새 인연]
+선행 확인: 이혼·별거 후 배우자성이 대운·세운에서 다시 생조받는 구간이 있는가. 공망이 풀리는 시점이 있는가.
+기운이 있는 경우: 배우자성이 새로 투간되거나 공망이 풀리는 대운·세운이 재결합 또는 새 인연의 시점. 새 인연의 오행이 내 용신에 가까운지 확인한다. 용신 오행의 새 인연이면 이전보다 안정적인 관계가 된다.
+기운이 없는 경우: 배우자성이 원국에서 계속 무력화된 구조 → 재결합·새 인연보다 독립적 삶이 맞는 구조. 혼자의 삶도 하나의 완성된 서사로 읽는다.
+
+[건강]
+선행 확인: 오행 중 극단적으로 편중되거나 결핍된 것이 있는가. 형충으로 흔들리는 지지가 있는가.
+기운이 있는 경우: 편중·결핍 오행이 대운·세운에서 극을 받는 시점이 위기. 오행-장부 대응(목=간담, 화=심장, 토=비위, 금=폐·대장, 수=신장·방광)으로 부위를 특정한다.
+기운이 없는 경우: 오행이 비교적 균형잡힌 원국 → 큰 건강 위기 없이 가는 구조. 단, 대운에서 갑자기 극이 몰리는 구간은 별도 확인한다.
+
+[재물·사업]
+선행 확인: 재성이 원국에 있는가. 뿌리(통근)가 있는가, 떠있는가. 식상이 재를 생할 수 있는 구조인가. 비겁이 재를 탈취하는 구도는 아닌가.
+기운이 있는 경우: 식상·재성이 대운·세운에서 생조받는 구간이 상승기. 비겁이 재를 치거나 관성이 식상을 극하는 구간이 손재·압박기.
+기운이 없는 경우: 재성이 없거나 뿌리 없이 떠있거나 비겁이 과다한 원국 → 재물이 모이지 않는 구조. 평생 재물과 인연이 엷거나, 벌어도 흩어지는 서사로 읽는다.
+
+[승진·직위]
+선행 확인: 관성이 원국에 있는가. 격국이 관운과 맞는 구조인가. 식상격이라면 관성이 오히려 기신은 아닌가.
+기운이 있는 경우: 관성이 대운·세운에서 투간되거나 생조받는 시점이 인정·승진의 시기. 식상격은 식상이 살아나는 구간에서 사회적 성취가 온다.
+기운이 없는 경우: 관성이 없거나 기신인 원국 → 조직·직장운이 없는 구조. 직장보다 독립·자영의 방향이 맞는 삶으로 읽는다.`;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function buildPrompt(){
+  const name = document.getElementById('name').value.trim() || '내담자';
+  const gender = document.querySelector('input[name="gender"]:checked').value;
+  const calendar = document.querySelector('input[name="calendar"]:checked').value;
+  const bdateRaw = document.getElementById('bdate').value;
+  const timeUnknown = document.getElementById('timeUnknown').checked;
+  const btime = document.getElementById('btime').value;
+  const memo = document.getElementById('memo').value.trim();
+
+  let dateStr = '(미입력)';
+  if(bdateRaw){
+    const [y,m,d] = bdateRaw.split('-');
+    dateStr = `${y}년 ${m}월 ${d}일`;
+  }
+  const timeStr = timeUnknown ? '모름 (시주 미확인 — 0~4단계는 년·월·일주만으로 풀이)' : (btime ? `${btime}` : '(미입력)');
+
+  const infoBlock =
+`# 리경명리학(理鏡命理學) 풀이 요청
+
+## 내담자 정보
+- 이름: ${name}
+- 성별: ${gender}
+- 달력 기준: ${calendar}
+- 생년월일: ${dateStr}
+- 출생 시각: ${timeStr}${memo ? `\n- 추가 메모: ${memo}` : ''}
+
+※ 만세력 이미지를 함께 첨부합니다. 이미지의 년·월·일·시 천간지지, 대운 흐름을 직접 읽어 아래 프롬프트에 따라 풀이해주세요.
+※ 출력은 0~5단계 순서를 지킨 서술형 MD 파일을 기본으로 하고, 카드형/보고서형 HTML은 별도 요청 시에만 추가로 작성해주세요.
+
+---
+`;
+
+  return infoBlock + "\n" + PROMPT_V5 + "\n\n---\n\n" + EVENT_TABLE;
+}
+
+const form = document.getElementById('genForm');
+const resultPanel = document.getElementById('resultPanel');
+const output = document.getElementById('output');
+const resultMeta = document.getElementById('resultMeta');
+const copyBtn = document.getElementById('copyBtn');
+
+document.getElementById('timeUnknown').addEventListener('change', (e)=>{
+  document.getElementById('btime').disabled = e.target.checked;
+  if(e.target.checked) document.getElementById('btime').value = '';
+});
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  const text = buildPrompt();
+  output.value = text;
+
+  const name = document.getElementById('name').value.trim() || '내담자';
+  const gender = document.querySelector('input[name="gender"]:checked').value;
+  const calendar = document.querySelector('input[name="calendar"]:checked').value;
+  const bdateRaw = document.getElementById('bdate').value;
+
+  resultMeta.innerHTML = '';
+  [name, gender, calendar, bdateRaw || '날짜 미입력'].forEach(v=>{
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = v;
+    resultMeta.appendChild(chip);
+  });
+
+  resultPanel.style.display = 'block';
+  resultPanel.scrollIntoView({behavior:'smooth', block:'start'});
+  copyBtn.textContent = '전체 복사';
+  copyBtn.classList.remove('copied');
+});
+
+copyBtn.addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(output.value);
+    copyBtn.textContent = '복사 완료 ✓';
+    copyBtn.classList.add('copied');
+    setTimeout(()=>{ copyBtn.textContent = '전체 복사'; copyBtn.classList.remove('copied'); }, 1800);
+  }catch(err){
+    output.select();
+    document.execCommand('copy');
+    copyBtn.textContent = '복사 완료 ✓';
+    copyBtn.classList.add('copied');
+    setTimeout(()=>{ copyBtn.textContent = '전체 복사'; copyBtn.classList.remove('copied'); }, 1800);
+  }
+});
+</script>
+
 </body>
 </html>
