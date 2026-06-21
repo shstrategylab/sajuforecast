@@ -320,9 +320,11 @@ function toDateStr(year, month, day) {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
-// 절기 DB가 커버하는 연도 범위 (2010~2050)
-const SOLAR_TERMS_MIN_YEAR = 2010;
-const SOLAR_TERMS_MAX_YEAR = 2050;
+// 절기 DB가 커버하는 연도 범위
+// [수정] 기존 2010~2050(날짜만 DB) → 1900~2100으로 확장
+//        (시각 포함 새 solar_terms_db.js로 교체됨에 따라)
+const SOLAR_TERMS_MIN_YEAR = 1900;
+const SOLAR_TERMS_MAX_YEAR = 2100;
 // 만세력 DB 연도 범위 (1950~2050)
 const MANSE_MIN_YEAR = 1950;
 const MANSE_MAX_YEAR = 2050;
@@ -582,7 +584,12 @@ function getSiju(ilganCG, siJijiStr) {
 // 대운수 = 생일~다음/이전 절기(節)까지의 일수 ÷ 3 (전통 명리 공식)
 // 순행: 남자+양년生, 여자+음년生 → 다음 절기까지 일수 사용
 // 역행: 남자+음년生, 여자+양년生 → 이전 절기까지 일수 사용
-function getDaeun(year, month, day, gender, count = 8) {
+//
+// [수정] hourStr 파라미터 추가. 기존에는 day 단위(자정 0시 기준)로만 일수를
+// 계산해 반올림 경계(예: 4.45일↔4.55일)에 걸린 생일에서 대운수가 한 칸씩
+// 어긋나는 문제가 있었음(실 사례: 1973-09-25 04:30生 → 자정 기준 4, 출생시각
+// 반영 시 5가 정답). hourStr이 있으면 시지 구간의 시작 시각을 일수 계산에 반영한다.
+function getDaeun(year, month, day, gender, count = 8, hourStr = null) {
   const yeonju = getYeonju(year, month, day);
   const yeonganUmyang = CHEONGAN_UMYANG[yeonju[0]];
 
@@ -598,7 +605,8 @@ function getDaeun(year, month, day, gender, count = 8) {
     daeuns.push(GAPJA_60[idx]);
   }
 
-  const startAgeResult = estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult);
+  const { hour, minute } = parseHourFromSiStr(hourStr);
+  const startAgeResult = estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult, hour, minute);
 
   return daeuns.map((gapja, i) => ({
     gapja,
@@ -607,26 +615,86 @@ function getDaeun(year, month, day, gender, count = 8) {
   })).map(d => ({ ...d, _daeunPrecise: startAgeResult.precise }));
 }
 
-// 대운 시작 나이 정밀 계산: 절기 DB가 있으면 실제 날짜 차이 ÷ 3을 사용하고,
-// 없으면 월 진행 기준 근사치(3~9세 범위)로 폴백한다.
-function estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult) {
+// hourStr(예: '寅시(03:30~05:30)')에서 대운수 계산에 쓸 "대표 시각"을 추출.
+function parseHourFromSiStr(siJijiStr) {
+  if (!siJijiStr || siJijiStr === '모름') return { hour: 0, minute: 0 };
+  const m = siJijiStr.match(/\((\d{1,2}):(\d{2})~/);
+  if (!m) return { hour: 0, minute: 0 };
+  return { hour: parseInt(m[1], 10), minute: parseInt(m[2], 10) };
+}
+
+// 대운 시작 나이 정밀 계산: 절기 DB가 있으면 실제 날짜(가능하면 시:분까지)
+// 차이 ÷ 3을 사용하고, 없으면 WOLGEON_FIXED_DATES(12절 평균 경계일) 기반
+// 근사치로 폴백한다.
+//
+// [수정 이력]
+//   1) 역행 시 woljuResult.prevTerm을 쓰면 "생일이 속한 절기"보다 한 단계
+//      더 이전 절기까지 거리를 재는 버그가 있었음(예: 1975-09-02는
+//      입추~백로 사이인데 prevTerm은 그 전인 소서를 가리켜 거리가 약
+//      2배로 부풀려졌음). 역행 시 "지나온 과거의 절입일"은 생일이 속한
+//      절기 자신의 시작일(governingTerm)이므로 prevTerm 대신 사용한다.
+//   2) targetTermObj.datetime(시:분 포함, KST 명시 ISO)이 있으면 이를
+//      우선 사용. birthDate도 동일하게 KST 명시 ISO로 만들어 타임존을
+//      맞춘다(둘의 타임존이 다르면 최대 9시간=0.375일까지 오차가 생겨
+//      반올림 결과가 바뀔 수 있음을 실제 사례로 확인했다).
+//   3) 일수→나이 환산은 반올림(Math.round)이 맞다. 강다인(1973-09-25),
+//      박찬수(1997-08-02), 임진권(1975-09-02) 세 실제 만세력 사례로
+//      교차검증 완료 — 절사(floor)는 두 건에서 어긋남.
+//   4) 폴백(절기 DB 범위 밖)도 day 단위 단순식 대신 WOLGEON_FIXED_DATES
+//      기반 실제 절기까지의 근사 거리로 계산한다.
+function estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult, hour = 0, minute = 0) {
   // 절기 DB 기반 정밀 계산
   if (woljuResult && woljuResult.precise) {
-    const targetTermObj = sunhaeng ? woljuResult.nextTerm : woljuResult.prevTerm;
-    if (targetTermObj && targetTermObj.date) {
-      const birthDate = new Date(year, month - 1, day);
-      const termDate = new Date(targetTermObj.date);
-      const diffDays = Math.abs(Math.round((termDate - birthDate) / 86400000));
-      // 전통 공식: 일수 ÷ 3 = 대운수 (소수점은 반올림, 최소 1)
+    const targetTermObj = sunhaeng ? woljuResult.nextTerm : woljuResult.governingTerm;
+    if (targetTermObj && (targetTermObj.datetime || targetTermObj.date)) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const birthIso = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00+09:00`;
+      const birthDate = new Date(birthIso);
+      const termDate = targetTermObj.datetime
+        ? new Date(targetTermObj.datetime)
+        : new Date(targetTermObj.date + 'T00:00:00+09:00');
+      const diffDays = Math.abs((termDate - birthDate) / 86400000);
+      // 전통 공식: 일수 ÷ 3 을 반올림 = 대운수 (최소 1)
       const daeunNum = Math.max(1, Math.round(diffDays / 3));
       return { age: daeunNum, precise: true, diffDays };
     }
   }
 
-  // 폴백: 절기 DB 범위 밖 — 월중 날짜 기준 근사치 (3~9세 범위)
-  const base = sunhaeng ? (31 - day) : day;
-  const daeunNum = Math.max(1, Math.min(9, Math.ceil(base / 3)));
-  return { age: daeunNum, precise: false };
+  // 폴백: 절기 DB 범위 밖 — WOLGEON_FIXED_DATES(12절 평균 경계일)로
+  // 순행=다음 절기, 역행=이전 절기까지의 일수를 근사 계산
+  const diffDays = approxDaysToNearestTerm(year, month, day, sunhaeng);
+  const daeunNum = Math.max(1, Math.round(diffDays / 3));
+  return { age: daeunNum, precise: false, diffDays };
+}
+
+// WOLGEON_FIXED_DATES 기반으로 출생일에서 다음/이전 절기까지의 근사 일수를 계산
+// (연도를 넘나드는 경계 — 1월 초 출생 시 전년도 대설, 12월 말 출생 시 익년도 소한 등 — 도 처리)
+function approxDaysToNearestTerm(year, month, day, sunhaeng) {
+  const sortedTerms = [
+    { month: 1,  day: 5  }, { month: 2,  day: 4  }, { month: 3,  day: 6  },
+    { month: 4,  day: 5  }, { month: 5,  day: 5  }, { month: 6,  day: 6  },
+    { month: 7,  day: 7  }, { month: 8,  day: 7  }, { month: 9,  day: 8  },
+    { month: 10, day: 8  }, { month: 11, day: 7  }, { month: 12, day: 7  }
+  ];
+
+  const birthDate = new Date(year, month - 1, day);
+
+  const candidates = [];
+  for (const y of [year - 1, year, year + 1]) {
+    for (const t of sortedTerms) {
+      candidates.push(new Date(y, t.month - 1, t.day));
+    }
+  }
+  candidates.sort((a, b) => a - b);
+
+  if (sunhaeng) {
+    const next = candidates.find(d => d > birthDate);
+    return next ? Math.round((next - birthDate) / 86400000) : 15;
+  } else {
+    const prevList = candidates.filter(d => d <= birthDate);
+    const prev = prevList.length ? prevList[prevList.length - 1] : null;
+    return prev ? Math.round((birthDate - prev) / 86400000) : 15;
+  }
 }
 
 // ── 세운 산출 ────────────────────────────────────────────────
@@ -663,7 +731,7 @@ function calcSaju(year, month, day, hourStr, gender, seunStartYear, seunCount) {
   const ilgan = ilju[0];
   const siju = getSiju(ilgan, hourStr === '모름' ? null : hourStr);
 
-  const daeun = getDaeun(year, month, day, gender, 8);
+  const daeun = getDaeun(year, month, day, gender, 8, hourStr);
   const seun = getSeun(
     seunStartYear !== undefined ? seunStartYear : new Date().getFullYear(),
     seunCount !== undefined ? seunCount : 15
