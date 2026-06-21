@@ -113,10 +113,11 @@ function generatePrompt() {
     return;
   }
 
-  // ── 사주 계산 ──
+  // ── 사주 계산 (분석 기간에 맞춰 세운 범위를 동적으로 산출) ──
+  const rangeInfo = parseAnalysisRange(analysisRange, year, currentYear);
   let saju;
   try {
-    saju = calcSaju(year, month, day, hourStr, gender);
+    saju = calcSaju(year, month, day, hourStr, gender, rangeInfo.seunStartYear, rangeInfo.seunCount);
   } catch (e) {
     showToast('사주 계산 중 오류가 발생했습니다.', true);
     console.error(e);
@@ -175,6 +176,11 @@ function showToast(msg, isError = false) {
   toast.style.background = isError ? '#8b1a1a' : '#1a5c5c';
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ── 분석 요청 영역: 모두선택 / 모두해제 ──
+function selectAllDomains(checked) {
+  document.querySelectorAll('.domain-check').forEach(el => { el.checked = checked; });
 }
 
 // 초기화: 연도 기본값 설정 + 양력/음력 토글 핸들러 등록
