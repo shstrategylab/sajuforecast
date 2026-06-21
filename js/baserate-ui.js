@@ -195,7 +195,11 @@
         return;
       }
 
-      BaserateEngine.addRecord(domain, signal, outcome, baseRate, note);
+      const result = BaserateEngine.addRecord(domain, signal, outcome, baseRate, note);
+      if (!result) {
+        alert('기록 저장에 실패했습니다. 브라우저의 시크릿/프라이빗 모드이거나 저장공간 제한 때문일 수 있습니다.');
+        return;
+      }
       form.reset();
       refresh();
     });
