@@ -652,7 +652,9 @@ function analyzeOheng(sajuPalja) {
 }
 
 // ── 전체 사주 계산 ───────────────────────────────────────────
-function calcSaju(year, month, day, hourStr, gender) {
+// seunStartYear/seunCount: 세운(歲運) 계산 시작 연도와 개수.
+//   지정하지 않으면 기존 동작(현재 연도부터 미래 15개년)을 그대로 유지한다.
+function calcSaju(year, month, day, hourStr, gender, seunStartYear, seunCount) {
   const yeonju = getYeonju(year, month, day);
   const woljuResult = getWolju(year, month, day, yeonju);
   const wolju = woljuResult.gapja;
@@ -662,7 +664,10 @@ function calcSaju(year, month, day, hourStr, gender) {
   const siju = getSiju(ilgan, hourStr === '모름' ? null : hourStr);
 
   const daeun = getDaeun(year, month, day, gender, 8);
-  const seun = getSeun(new Date().getFullYear(), 15);
+  const seun = getSeun(
+    seunStartYear !== undefined ? seunStartYear : new Date().getFullYear(),
+    seunCount !== undefined ? seunCount : 15
+  );
 
   // 사주 8자 (시주 없으면 6자)
   const chars = siju
