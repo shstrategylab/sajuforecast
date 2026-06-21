@@ -1,44 +1,54 @@
-// ============================================================
-//  tabs.js · 프롬프트 생성기 / 베이스레이트 검증기 탭 전환
-// ============================================================
+/**
+ * tabs.js — 탭 전환 로직
+ * 탭 버튼 클릭 시 해당 패널을 표시하고 나머지를 숨깁니다.
+ */
 
-const TAB_CONFIG = {
-  prompt: {
-    title: '사주 예측 프롬프트 생성기',
-    sub: '생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다'
-  },
-  baserate: {
-    title: '베이스레이트 검증기',
-    sub: '합·충·형·삼합 신호가 실제 사건을 변별하는지 숫자로 확인합니다'
+(function () {
+  'use strict';
+
+  /**
+   * 탭을 초기화합니다.
+   * DOM이 로드된 후 호출됩니다.
+   */
+  function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabPanels  = document.querySelectorAll('.tab-panel');
+
+    if (!tabButtons.length || !tabPanels.length) return;
+
+    tabButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const target = btn.dataset.tab;
+
+        // 버튼 활성화 상태 갱신
+        tabButtons.forEach(function (b) {
+          b.classList.toggle('active', b.dataset.tab === target);
+          b.setAttribute('aria-selected', b.dataset.tab === target ? 'true' : 'false');
+        });
+
+        // 패널 표시/숨김 갱신
+        tabPanels.forEach(function (panel) {
+          const isActive = panel.dataset.panel === target;
+          panel.classList.toggle('active', isActive);
+          panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+        });
+      });
+    });
+
+    // 초기 활성 탭 설정 (URL 해시 또는 첫 번째 탭)
+    const hash = location.hash.replace('#', '');
+    const initialTab = hash && document.querySelector('[data-tab="' + hash + '"]')
+      ? hash
+      : tabButtons[0].dataset.tab;
+
+    const initialBtn = document.querySelector('[data-tab="' + initialTab + '"]');
+    if (initialBtn) initialBtn.click();
   }
-};
 
-function switchTab(tab) {
-  const promptPanel = document.getElementById('tabPrompt');
-  const baseratePanel = document.getElementById('tabBaserate');
-  const btnPrompt = document.getElementById('tabBtnPrompt');
-  const btnBaserate = document.getElementById('tabBtnBaserate');
-
-  if (tab === 'prompt') {
-    promptPanel.style.display = '';
-    baseratePanel.style.display = 'none';
-    btnPrompt.classList.add('active');
-    btnBaserate.classList.remove('active');
+  // DOM 준비 후 초기화
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTabs);
   } else {
-    promptPanel.style.display = 'none';
-    baseratePanel.style.display = '';
-    btnPrompt.classList.remove('active');
-    btnBaserate.classList.add('active');
+    initTabs();
   }
-
-  const cfg = TAB_CONFIG[tab];
-  document.getElementById('pageTitle').textContent = cfg.title;
-  document.getElementById('pageSub').textContent = cfg.sub;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const endYearInput = document.getElementById('brEndYear');
-  if (endYearInput && !endYearInput.value) {
-    endYearInput.value = new Date().getFullYear();
-  }
-});
+})();
