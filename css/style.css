@@ -504,3 +504,41 @@ footer {
 .br-details-toggle summary:hover {
   color: var(--teal-lt);
 }
+
+/* ===========================
+   도메인 선택 헤더 (모두선택/해제 버튼)
+   =========================== */
+
+.domain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.domain-header label {
+  margin-bottom: 0;
+}
+
+.domain-select-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn-mini {
+  padding: 0.25rem 0.7rem;
+  background: transparent;
+  color: var(--teal);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--teal);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-mini:hover {
+  background: var(--teal);
+  color: #fff;
+}
