@@ -1,120 +1,196 @@
-// ============================================================
-//  baserate.js · 베이스레이트(기저율) 계산 엔진
-//  목적: "사건이 있던 해"와 "아무 일 없던 해" 양쪽에 동일한 규칙을
-//        기계적으로 적용해, 그 규칙이 실제로 변별력이 있는지 검증한다.
-//  설계 원칙:
-//   - 신호는 절대 미리 가중치를 매기거나 합산 점수를 만들지 않는다.
-//     (점수화 자체가 또 다른 형태의 사후 끼워맞추기가 될 수 있음)
-//   - 신호 종류별로 분리해서 세고, 임계값(1개/2개/3개 이상)별로
-//     동시에 결과를 보여줘 사용자가 스스로 변별력을 판단하게 한다.
-//   - 규칙(어떤 신호를 셀지)은 이 파일 상단에 고정해두고, 사례를 볼 때마다
-//     바꾸지 않는다. 바꾸려면 버전을 올리고 명시적으로 기록한다.
-// ============================================================
+/**
+ * baserate.js — 베이스레이트 계산 엔진
+ *
+ * 사주 예측 기록을 바탕으로 적중률·변별력 통계를 계산합니다.
+ *
+ * 핵심 개념
+ * ─────────
+ * - 예측(Prediction): 특정 사건이 발생할 것이라는 사주 판단
+ * - 결과(Outcome)   : 실제 사건 발생 여부 (적중 / 미적중 / 미확인)
+ * - 베이스레이트    : 해당 사건이 일반 모집단에서 발생하는 기저 확률
+ * - 신호(Signal)    : 사주에서 해당 사건을 예고하는 특정 패턴/조합의 존재 여부
+ * - 변별력          : 신호가 있을 때와 없을 때 적중률 차이 (= 정보 이득)
+ *
+ * 저장 구조 (localStorage key: "saju_baserate_records")
+ * ────────────────────────────────────────────────────
+ * [
+ *   {
+ *     id        : string,   // UUID
+ *     domain    : string,   // 예측 영역 (예: "결혼·동거·재혼")
+ *     signal    : boolean,  // 사주에 해당 신호가 있었는가
+ *     outcome   : "hit" | "miss" | "pending",
+ *     baseRate  : number,   // 사용자 지정 기저 확률 (0~1)
+ *     note      : string,   // 메모
+ *     createdAt : string,   // ISO 날짜
+ *   },
+ *   ...
+ * ]
+ */
 
-// ── 분석 규칙 버전 (사례를 볼 때마다 바뀌지 않도록 버전을 명시 고정) ──
-const BASERATE_RULE_VERSION = 'v1 (2026-06-20 고정)';
+const BaserateEngine = (function () {
+  'use strict';
 
-// ── 신호 1년치 계산 ──
-// year: 분석 대상 연도 (세운 산출 기준)
-// wonguk4: [연지, 월지, 일지, 시지] 4글자 배열
-// ilgan: 일간 천간 (세운 천간의 임시 십성 계산용)
-// samhapMode: 'complete'(완성만 인정) | 'loose'(반합도 인정)
-function getYearSignals(year, wonguk4, ilgan, samhapMode) {
-  const positions = ['연지', '월지', '일지', '시지'];
-  const yeonju = getYeonju(year, 6, 1); // 세운은 연중 대표 시점(6/1)으로 산출 — 절기 경계 영향 없는 안전한 날짜
-  const seunJi = yeonju[1];
-  const seunCg = yeonju[0];
+  const STORAGE_KEY = 'saju_baserate_records';
 
-  const chungHits = [];
-  const hapHits = [];
-  const hyeongHits = [];
+  /* ─────────────────────────────────────────
+     저장소 헬퍼
+  ───────────────────────────────────────── */
 
-  wonguk4.forEach((w, idx) => {
-    if (!w) return;
-    if (isChung(w, seunJi)) chungHits.push(positions[idx] + '(' + w + ')');
-    if (isJijiHap(w, seunJi)) hapHits.push(positions[idx] + '(' + w + ')');
-    if (isHyeong(w, seunJi)) hyeongHits.push(positions[idx] + '(' + w + ')');
-  });
-
-  // 삼합 판정: 원국 4글자 + 세운지지를 합쳐서 검사
-  const validWonguk = wonguk4.filter(Boolean);
-  const samhapCandidates = getSamhap([...validWonguk, seunJi]);
-  const samhapHits = samhapCandidates.filter(s => {
-    if (samhapMode === 'complete') return s.complete;
-    return s.matched.length >= 2; // loose: 반합도 인정
-  });
-
-  const seunSipseong = ilgan ? getSipseong(ilgan, seunCg) : null;
-
-  // 임시 상관견관 여부: 세운천간이 상관이고, 원국 또는 세운에 정관이 있는 경우만 별도 표시
-  const isImsiSangwan = seunSipseong === '상관(傷官)';
-
-  const signalCount = chungHits.length + hapHits.length + hyeongHits.length + samhapHits.length;
-
-  return {
-    year,
-    yeonju,
-    seunJi,
-    seunCg,
-    chungHits,
-    hapHits,
-    hyeongHits,
-    samhapHits: samhapHits.map(s => s.matched.join('') + (s.complete ? '(완성)' : '(반합)')),
-    seunSipseong,
-    isImsiSangwan,
-    signalCount
-  };
-}
-
-// ── 전체 기간 베이스레이트 계산 ──
-// birthYear: 출생연도, endYear: 분석 종료연도(보통 현재)
-// wonguk4: [연지, 월지, 일지, 시지]
-// ilgan: 일간
-// eventYears: 사용자가 입력한 실제 사건 발생 연도 배열 (예: [1995, 1997, 2003, 2013])
-// samhapMode: 'complete' | 'loose'
-function calcBaseRate(birthYear, endYear, wonguk4, ilgan, eventYears, samhapMode) {
-  const allYears = [];
-  for (let y = birthYear; y <= endYear; y++) {
-    const sig = getYearSignals(y, wonguk4, ilgan, samhapMode);
-    sig.isEventYear = eventYears.includes(y);
-    allYears.push(sig);
+  function loadRecords() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch (e) {
+      return [];
+    }
   }
 
-  const totalYears = allYears.length;
-  const eventYearSignals = allYears.filter(y => y.isEventYear);
-  const nonEventYearSignals = allYears.filter(y => !y.isEventYear);
+  function saveRecords(records) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
 
-  // 임계값별(1개 이상/2개 이상/3개 이상) 히트율 계산
-  const thresholds = [1, 2, 3];
-  const thresholdStats = thresholds.map(t => {
-    const allHitRate = allYears.filter(y => y.signalCount >= t).length / totalYears;
-    const eventHitRate = eventYearSignals.length > 0
-      ? eventYearSignals.filter(y => y.signalCount >= t).length / eventYearSignals.length
-      : null;
-    const nonEventHitRate = nonEventYearSignals.length > 0
-      ? nonEventYearSignals.filter(y => y.signalCount >= t).length / nonEventYearSignals.length
-      : null;
-    return {
-      threshold: t,
-      allHitRate,
-      eventHitRate,
-      nonEventHitRate,
-      // 변별력 = 사건해 히트율 - 무사건해 히트율. 0에 가까우면 변별력 없음, 음수면 역효과
-      discrimination: (eventHitRate !== null && nonEventHitRate !== null)
-        ? eventHitRate - nonEventHitRate
-        : null
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  /* ─────────────────────────────────────────
+     CRUD
+  ───────────────────────────────────────── */
+
+  function addRecord(domain, signal, outcome, baseRate, note) {
+    const records = loadRecords();
+    const record = {
+      id        : generateId(),
+      domain    : domain || '미분류',
+      signal    : !!signal,
+      outcome   : outcome || 'pending',
+      baseRate  : parseFloat(baseRate) || 0,
+      note      : note || '',
+      createdAt : new Date().toISOString(),
     };
-  });
+    records.push(record);
+    saveRecords(records);
+    return record;
+  }
+
+  function updateRecord(id, patch) {
+    const records = loadRecords();
+    const idx = records.findIndex(function (r) { return r.id === id; });
+    if (idx === -1) return null;
+    records[idx] = Object.assign({}, records[idx], patch);
+    saveRecords(records);
+    return records[idx];
+  }
+
+  function deleteRecord(id) {
+    const records = loadRecords().filter(function (r) { return r.id !== id; });
+    saveRecords(records);
+  }
+
+  function getRecords(filterFn) {
+    const records = loadRecords();
+    return filterFn ? records.filter(filterFn) : records;
+  }
+
+  /* ─────────────────────────────────────────
+     통계 계산
+  ───────────────────────────────────────── */
+
+  /**
+   * 전체 또는 도메인별 요약 통계를 반환합니다.
+   *
+   * @param {string|null} domain  - null이면 전체
+   * @returns {object} stats
+   */
+  function calcStats(domain) {
+    const all = loadRecords().filter(function (r) {
+      return r.outcome !== 'pending' && (domain == null || r.domain === domain);
+    });
+
+    if (all.length === 0) {
+      return {
+        total       : 0,
+        hitRate     : null,
+        signalHit   : null,
+        noSignalHit : null,
+        discrimination: null,
+        byDomain    : {},
+      };
+    }
+
+    const hits       = all.filter(function (r) { return r.outcome === 'hit'; });
+    const withSignal = all.filter(function (r) { return r.signal; });
+    const withoutSig = all.filter(function (r) { return !r.signal; });
+
+    const hitRate     = hits.length / all.length;
+    const signalHit   = withSignal.length ? withSignal.filter(function (r) { return r.outcome === 'hit'; }).length / withSignal.length : null;
+    const noSignalHit = withoutSig.length ? withoutSig.filter(function (r) { return r.outcome === 'hit'; }).length / withoutSig.length : null;
+
+    // 변별력 = 신호 있을 때 적중률 - 신호 없을 때 적중률
+    const discrimination = (signalHit !== null && noSignalHit !== null)
+      ? signalHit - noSignalHit
+      : null;
+
+    // 도메인별 집계
+    const byDomain = {};
+    loadRecords().filter(function (r) { return r.outcome !== 'pending'; }).forEach(function (r) {
+      if (!byDomain[r.domain]) {
+        byDomain[r.domain] = { total: 0, hits: 0 };
+      }
+      byDomain[r.domain].total++;
+      if (r.outcome === 'hit') byDomain[r.domain].hits++;
+    });
+    Object.keys(byDomain).forEach(function (d) {
+      byDomain[d].hitRate = byDomain[d].hits / byDomain[d].total;
+    });
+
+    return {
+      total          : all.length,
+      hitCount       : hits.length,
+      hitRate        : hitRate,
+      signalCount    : withSignal.length,
+      signalHit      : signalHit,
+      noSignalCount  : withoutSig.length,
+      noSignalHit    : noSignalHit,
+      discrimination : discrimination,
+      byDomain       : byDomain,
+    };
+  }
+
+  /**
+   * 임계값(threshold)별 변별력을 계산합니다.
+   * 신호 강도(0~1) 필드가 있을 때 활용합니다.
+   * 현재는 signal boolean 기반이므로 단일 임계값(0.5) 기준으로 반환합니다.
+   *
+   * @returns {Array<{threshold: number, discrimination: number, n: number}>}
+   */
+  function calcThresholdDiscrimination() {
+    const records = loadRecords().filter(function (r) { return r.outcome !== 'pending'; });
+    // boolean signal → threshold 0.5 고정
+    const result = [];
+    [0.5].forEach(function (t) {
+      const above = records.filter(function (r) { return r.signal; });
+      const below = records.filter(function (r) { return !r.signal; });
+      const aboveHit = above.filter(function (r) { return r.outcome === 'hit'; });
+      const belowHit = below.filter(function (r) { return r.outcome === 'hit'; });
+      const disc = (above.length && below.length)
+        ? (aboveHit.length / above.length) - (belowHit.length / below.length)
+        : null;
+      result.push({ threshold: t, discrimination: disc, n: records.length });
+    });
+    return result;
+  }
+
+  /* ─────────────────────────────────────────
+     퍼블릭 API
+  ───────────────────────────────────────── */
 
   return {
-    ruleVersion: BASERATE_RULE_VERSION,
-    samhapMode,
-    birthYear,
-    endYear,
-    totalYears,
-    eventYearCount: eventYearSignals.length,
-    nonEventYearCount: nonEventYearSignals.length,
-    allYears,
-    thresholdStats
+    addRecord                  : addRecord,
+    updateRecord               : updateRecord,
+    deleteRecord               : deleteRecord,
+    getRecords                 : getRecords,
+    calcStats                  : calcStats,
+    calcThresholdDiscrimination: calcThresholdDiscrimination,
+    loadRecords                : loadRecords,
   };
-}
+})();
