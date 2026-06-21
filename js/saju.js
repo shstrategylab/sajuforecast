@@ -49,31 +49,28 @@ const OHENG_SAENGKUK = {
   剋: { '木':'土','火':'金','土':'水','金':'木','水':'火' }
 };
 
-// ── 지지 정기(正氣) 기준 음양표 ──────────────────────────────────
-// ⚠ 중요: 십성 판정에 쓰이는 지지의 음양은 "지지 자체의 음양"이 아니라
-//   그 지지의 지장간 중 "정기(正氣)" 천간의 음양을 따라야 한다.
-//   (지지 자체에는 십성이 없고, 지장간 정기의 십성을 지지의 십성처럼
-//    부르는 관행이기 때문 — 위키백과 '사주명리학' 항목 등 다수 출처 확인됨)
-//   기존에 "子寅辰午申戌=양, 그 외=음"이라는 지지 자체 음양표를 그대로
-//   십성 판정에 썼던 것이 버그였다. 子(정기 癸=음), 巳(정기 丙=양),
-//   午(정기 丁=음), 亥(정기 壬=양) 4글자에서 실제 정기 음양과 어긋났다.
-const JIJI_JEONGGI_UMYANG = {
-  '子':'음', // 정기 癸
-  '丑':'음', // 정기 己
-  '寅':'양', // 정기 甲
-  '卯':'음', // 정기 乙
-  '辰':'양', // 정기 戊
-  '巳':'양', // 정기 丙
-  '午':'음', // 정기 丁
-  '未':'음', // 정기 己
-  '申':'양', // 정기 庚
-  '酉':'음', // 정기 辛
-  '戌':'양', // 정기 戊
-  '亥':'양'  // 정기 壬
-};
-
 // ── 십성 (十星) 계산 ──────────────────────────────────────────
 // 일간 기준으로 상대 천간/오행의 십성을 반환
+//
+// [수정 이력] 지지의 십성 음양 판정 기준 변경
+//   기존: 지지 자체의 방위 음양표(子寅辰午申戌=양, 丑卯巳未酉亥=음)를 사용
+//   변경: 지장간 정기(본기) 천간의 음양을 사용 (자평명리 통용 기준)
+//   사유: 亥의 경우 기존 방식은 '음'으로 분류되어 일간 辛(음)과 결합 시
+//         '식신'으로 산출되었으나, 亥의 정기 壬(양)을 기준으로 하면
+//         辛(음)生壬(양) = 음양 불일치 → '상관'이 산출됨.
+//         만세력 검증 결과 亥는 '상관'이 정확하여 정기 기준으로 정정함.
+//   주의: JIJI_JIJANG 배열은 여기-중기-정기 순서가 아니므로(예: 寅이
+//         ['甲','丙','戊']로 되어 있어 마지막 원소가 정기 甲이 아님) 배열에서
+//         정기를 추정하지 않고, 아래 JIJI_JEONGGI 표를 별도로 명시한다.
+const JIJI_JEONGGI = {
+  '子':'癸', '丑':'己', '寅':'甲', '卯':'乙', '辰':'戊', '巳':'丙',
+  '午':'丁', '未':'己', '申':'庚', '酉':'辛', '戌':'戊', '亥':'壬'
+};
+function getJijiJeonggiUmyang(ji) {
+  const jeonggi = JIJI_JEONGGI[ji];
+  return jeonggi ? CHEONGAN_UMYANG[jeonggi] : null;
+}
+
 function getSipseong(ilgan, target) {
   const ilOheng = CHEONGAN_OHENG[ilgan];
   const ilUmyang = CHEONGAN_UMYANG[ilgan];
@@ -85,8 +82,8 @@ function getSipseong(ilgan, target) {
     targetUmyang = CHEONGAN_UMYANG[target];
   } else if (JIJI_OHENG[target]) {
     targetOheng = JIJI_OHENG[target];
-    // 지지 정기(正氣) 천간의 음양을 따른다 (지지 자체 음양표 아님 — 위 설명 참조)
-    targetUmyang = JIJI_JEONGGI_UMYANG[target];
+    // 지지 음양: 지장간 정기(본기) 천간의 음양을 따름 (자평명리 통용 기준)
+    targetUmyang = getJijiJeonggiUmyang(target);
   } else {
     return '불명';
   }
@@ -151,34 +148,32 @@ function isHyeong(a, b) {
   return JIJI_HYEONG.some(group => group.includes(a) && group.includes(b) && a !== b);
 }
 
-// ── 지지 파 (地支破/六破) ──────────────────────────────────────
-// ⚠ 명리학계 내에서도 학파에 따라 채택 여부가 갈리는 보조 신호.
-//   충(沖)·형(刑)보다 작용력이 약하다는 게 다수 학파의 공통된 평가이므로,
-//   프롬프트에서도 "참고용 약한 신호"로 표시하고 충·형과 동급으로 다루지 않는다.
+// ── 지지 육해 (地支六害) ──────────────────────────────────────
+// 서로 방해·훼방하는 관계. 충(沖)이나 형(刑)만큼 강하지는 않으나
+// 해당 지지가 일지·월지처럼 핵심 자리에 있을 때 특히 살펴야 하는 관계.
+const JIJI_YUKHAE = [
+  ['子','未'],['丑','午'],['寅','巳'],['卯','辰'],['申','亥'],['酉','戌']
+];
+function isYukhae(a, b) {
+  return JIJI_YUKHAE.some(pair => (pair[0]===a && pair[1]===b) || (pair[0]===b && pair[1]===a));
+}
+
+// ── 지지 원진 (怨嗔) ──────────────────────────────────────────
+// 겉으로 드러나지 않는 미묘한 갈등·꺼림을 나타내는 관계.
+const JIJI_WONJIN = [
+  ['子','未'],['丑','午'],['寅','酉'],['卯','申'],['辰','亥'],['巳','戌']
+];
+function isWonjin(a, b) {
+  return JIJI_WONJIN.some(pair => (pair[0]===a && pair[1]===b) || (pair[0]===b && pair[1]===a));
+}
+
+// ── 지지 파 (地支破) ──────────────────────────────────────────
+// 합이나 충보다는 약하게 구조를 흩뜨리는 관계.
 const JIJI_PA = [
-  ['子','酉'], ['丑','辰'], ['寅','亥'], ['卯','午'], ['巳','申'], ['未','戌']
+  ['子','酉'],['丑','辰'],['寅','亥'],['卯','午'],['巳','申'],['未','戌']
 ];
 function isPa(a, b) {
   return JIJI_PA.some(pair => (pair[0]===a && pair[1]===b) || (pair[0]===b && pair[1]===a));
-}
-
-// ── 지지 해 (地支害/六害) ──────────────────────────────────────
-// ⚠ 파(破)와 마찬가지로 충·형보다 작용력이 약한 보조 신호로 다수 학파가 평가.
-const JIJI_HAE = [
-  ['子','未'], ['丑','午'], ['寅','巳'], ['卯','辰'], ['申','亥'], ['酉','戌']
-];
-function isHae(a, b) {
-  return JIJI_HAE.some(pair => (pair[0]===a && pair[1]===b) || (pair[0]===b && pair[1]===a));
-}
-
-// ── 귀문관살 (鬼門關殺) ──────────────────────────────────────
-// 신경과민·예민함·영적 감수성과 연결지어 해석되는 신살. 子-酉(자유파와 겹침)를
-// 포함해 통상 아래 조합을 귀문관살로 본다 (출처마다 일부 조합 차이가 있을 수 있음).
-const GWIMUN_GWANSAL = [
-  ['子','酉'], ['丑','午'], ['寅','未'], ['卯','申'], ['辰','亥'], ['巳','戌']
-];
-function isGwimun(a, b) {
-  return GWIMUN_GWANSAL.some(pair => (pair[0]===a && pair[1]===b) || (pair[0]===b && pair[1]===a));
 }
 
 // ── 지지 합 (地支合/六合) ──────────────────────────────────────
@@ -234,37 +229,6 @@ function getDohwa(ilji) {
     if (group.includes(ilji)) return dohwa;
   }
   return null;
-}
-
-// ── 천을귀인 (天乙貴人) ─────────────────────────────────────
-// 명리학에서 대표적인 길신(吉神). 일간 기준으로 판정하며, 원국 지지 중
-// 해당 글자가 있으면 성립. 여러 독립 출처(삼명통회·명리약언 기반 정리)로 교차검증됨.
-const CHEONEULGWIIN = {
-  '甲': ['丑','未'], '戊': ['丑','未'], '庚': ['丑','未'],
-  '乙': ['子','申'], '己': ['子','申'],
-  '丙': ['亥','酉'], '丁': ['亥','酉'],
-  '辛': ['寅','午'],
-  '壬': ['卯','巳'], '癸': ['卯','巳']
-};
-function getCheoneulgwiin(ilgan, jijis) {
-  const targets = CHEONEULGWIIN[ilgan] || [];
-  return targets.filter(t => jijis.includes(t));
-}
-
-// ── 백호살 (白虎殺) ──────────────────────────────────────────
-// 대표적인 흉살(凶殺) 중 하나. 갑진·을미·병술·정축·무진·임술·계축 7개 간지 조합.
-// 정통적으로는 "일주에 있어야 성립, 다른 주는 일주에 있을 때만 추가 인정"하는
-// 규칙이나, 여기서는 4기둥 전체를 보조적으로 점검해 후보만 제시한다(최종 판단은
-// 일주 여부를 우선하도록 프롬프트에서 안내).
-const BAEKHO_GANJI = ['甲辰','乙未','丙戌','丁丑','戊辰','壬戌','癸丑'];
-function getBaekho(juList) {
-  // juList: [연주, 월주, 일주, 시주] 형태의 간지 문자열 배열 (없는 주는 null)
-  const positions = ['연주','월주','일주','시주'];
-  const hits = [];
-  juList.forEach((ju, idx) => {
-    if (ju && BAEKHO_GANJI.includes(ju)) hits.push(positions[idx] + '(' + ju + ')');
-  });
-  return hits;
 }
 
 // ── 공망 (空亡) ──────────────────────────────────────────────
@@ -604,11 +568,24 @@ function getDaeun(year, month, day, gender, count = 8) {
     gapja,
     age: startAgeResult.age + i * 10,
     year: year + startAgeResult.age + i * 10
-  })).map(d => ({ ...d, _daeunPrecise: startAgeResult.precise }));
+  })).map(d => ({
+    ...d,
+    _daeunPrecise: startAgeResult.precise,
+    _daeunNum: startAgeResult.age,      // 대운수(첫 대운 시작 나이)
+    _sunhaeng: sunhaeng                  // true=순행, false=역행
+  }));
 }
 
 // 대운 시작 나이 정밀 계산: 절기 DB가 있으면 실제 날짜 차이 ÷ 3을 사용하고,
-// 없으면 월 진행 기준 근사치(3~9세 범위)로 폴백한다.
+// 없으면 WOLGEON_FIXED_DATES(12절 평균 경계일)를 이용해 가장 가까운 절기까지의
+// 일수를 근사 계산한다.
+// [수정 이력]
+//   1) 기존 폴백은 출생일자만으로 ceil(day/3)을 계산해 실제 절기와 무관한 값이
+//      나오는 버그가 있었음 → WOLGEON_FIXED_DATES 기반 실제 절기 거리 계산으로 교체
+//   2) 일수→나이 환산 시 반올림(Math.round)을 쓰면 만세력 실측값과 어긋남을 확인.
+//      예: 1975-09-02(역행)는 입추~생일이 26일 → 26/3=8.67 → 반올림하면 9가
+//      되지만 만세력 실제 대운수는 8. 전통 명리 공식은 일수÷3의 정수부만 취하고
+//      나머지는 버리는 절사(내림) 방식이 맞음 → Math.floor로 통일.
 function estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult) {
   // 절기 DB 기반 정밀 계산
   if (woljuResult && woljuResult.precise) {
@@ -617,16 +594,51 @@ function estimateDaeunStartAge(year, month, day, sunhaeng, woljuResult) {
       const birthDate = new Date(year, month - 1, day);
       const termDate = new Date(targetTermObj.date);
       const diffDays = Math.abs(Math.round((termDate - birthDate) / 86400000));
-      // 전통 공식: 일수 ÷ 3 = 대운수 (소수점은 반올림, 최소 1)
-      const daeunNum = Math.max(1, Math.round(diffDays / 3));
+      // 전통 공식: 일수 ÷ 3 의 정수부 = 대운수 (절사, 최소 1)
+      const daeunNum = Math.max(1, Math.floor(diffDays / 3));
       return { age: daeunNum, precise: true, diffDays };
     }
   }
 
-  // 폴백: 절기 DB 범위 밖 — 월중 날짜 기준 근사치 (3~9세 범위)
-  const base = sunhaeng ? (31 - day) : day;
-  const daeunNum = Math.max(1, Math.min(9, Math.ceil(base / 3)));
-  return { age: daeunNum, precise: false };
+  // 폴백: 절기 DB 범위 밖 — WOLGEON_FIXED_DATES(12절 평균 경계일)로
+  // 순행=다음 절기, 역행=이전 절기까지의 일수를 근사 계산
+  const diffDays = approxDaysToNearestTerm(year, month, day, sunhaeng);
+  const daeunNum = Math.max(1, Math.floor(diffDays / 3));
+  return { age: daeunNum, precise: false, diffDays };
+}
+
+// WOLGEON_FIXED_DATES 기반으로 출생일에서 다음/이전 절기까지의 근사 일수를 계산
+// (연도를 넘나드는 경계 — 1월 초 출생 시 전년도 대설, 12월 말 출생 시 익년도 소한 등 — 도 처리)
+function approxDaysToNearestTerm(year, month, day, sunhaeng) {
+  // WOLGEON_FIXED_DATES를 연중 순서로 정렬 (1월 소한부터)
+  const sortedTerms = [
+    { month: 1,  day: 5  }, { month: 2,  day: 4  }, { month: 3,  day: 6  },
+    { month: 4,  day: 5  }, { month: 5,  day: 5  }, { month: 6,  day: 6  },
+    { month: 7,  day: 7  }, { month: 8,  day: 7  }, { month: 9,  day: 8  },
+    { month: 10, day: 8  }, { month: 11, day: 7  }, { month: 12, day: 7  }
+  ];
+
+  const birthDate = new Date(year, month - 1, day);
+
+  // 출생연도 기준 전후로 절기 날짜 후보 목록을 만든다 (연도 경계 안전하게 처리)
+  const candidates = [];
+  for (const y of [year - 1, year, year + 1]) {
+    for (const t of sortedTerms) {
+      candidates.push(new Date(y, t.month - 1, t.day));
+    }
+  }
+  candidates.sort((a, b) => a - b);
+
+  if (sunhaeng) {
+    // 순행: 출생일 이후의 가장 가까운 절기
+    const next = candidates.find(d => d > birthDate);
+    return next ? Math.round((next - birthDate) / 86400000) : 15; // 안전 기본값
+  } else {
+    // 역행: 출생일 이전의 가장 가까운 절기
+    const prevList = candidates.filter(d => d <= birthDate);
+    const prev = prevList.length ? prevList[prevList.length - 1] : null;
+    return prev ? Math.round((birthDate - prev) / 86400000) : 15; // 안전 기본값
+  }
 }
 
 // ── 세운 산출 ────────────────────────────────────────────────
@@ -683,35 +695,33 @@ function calcSaju(year, month, day, hourStr, gender) {
   const jijis = [yeonju[1], wolju[1], ilju[1]];
   if (siju) jijis.push(siju[1]);
 
-  // 충·형·합·파·해·귀문관살 분석 (4지지 전체 6쌍 전수 비교)
-  const chungs = [], hyeongs = [], haps = [], pas = [], haes = [], gwimuns = [];
+  // 충·형·합·해·원진·파 분석
+  const chungs = [], hyeongs = [], haps = [], yukhaes = [], wonjins = [], pas = [];
   for (let i = 0; i < jijis.length; i++) {
     for (let j = i + 1; j < jijis.length; j++) {
       if (isChung(jijis[i], jijis[j])) chungs.push([jijis[i], jijis[j]]);
       if (isHyeong(jijis[i], jijis[j])) hyeongs.push([jijis[i], jijis[j]]);
       if (isJijiHap(jijis[i], jijis[j])) haps.push([jijis[i], jijis[j]]);
+      if (isYukhae(jijis[i], jijis[j])) yukhaes.push([jijis[i], jijis[j]]);
+      if (isWonjin(jijis[i], jijis[j])) wonjins.push([jijis[i], jijis[j]]);
       if (isPa(jijis[i], jijis[j])) pas.push([jijis[i], jijis[j]]);
-      if (isHae(jijis[i], jijis[j])) haes.push([jijis[i], jijis[j]]);
-      if (isGwimun(jijis[i], jijis[j])) gwimuns.push([jijis[i], jijis[j]]);
     }
   }
 
   const samhaps = getSamhap(jijis);
   const banghaps = getBanghap(jijis);
-  const gongmang = getGongmang(ilju); // 일주 기준 공망 (가장 널리 쓰이는 기준)
-  const gongmangYeonju = getGongmang(yeonju); // 연주 기준 공망 (보조 기준 — 학파에 따라 채택)
+  // 공망: 일주 기준(전통적으로 가장 널리 쓰이는 기준)과 연주 기준을 모두 산출
+  const gongmang = getGongmang(ilju);
+  const gongmangYeonju = getGongmang(yeonju);
   const yeokma = getYeokma(ilju[1]);
   const dohwa = getDohwa(ilju[1]);
-  const cheoneulgwiin = getCheoneulgwiin(ilgan, jijis); // 길신(吉神) — 흉살 위주 편향 방지
-  const baekho = getBaekho(siju ? [yeonju, wolju, ilju, siju] : [yeonju, wolju, ilju, null]);
-  const baekhoIlju = BAEKHO_GANJI.includes(ilju); // 일주 백호 여부(정통 판정 기준 — 가장 비중 큼)
 
   return {
     yeonju, wolju, ilju, siju, ilgan,
     daeun, seun,
     ohengCount, sipseongMap,
-    chungs, hyeongs, haps, pas, haes, gwimuns, samhaps, banghaps,
-    gongmang, gongmangYeonju, yeokma, dohwa, cheoneulgwiin, baekho, baekhoIlju,
+    chungs, hyeongs, haps, yukhaes, wonjins, pas, samhaps, banghaps,
+    gongmang, gongmangYeonju, yeokma, dohwa,
     jijis, chars,
     _meta: {
       woljuPrecise: woljuResult.precise,
