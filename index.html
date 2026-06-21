@@ -13,278 +13,283 @@
       <div class="header-title">
         <span class="header-icon">☯</span>
         <div>
-          <h1>사주 예측 프롬프트 생성기</h1>
-          <p class="header-sub">생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다</p>
+          <h1 id="pageTitle">사주 예측 프롬프트 생성기</h1>
+          <p class="header-sub" id="pageSub">생년월일시를 입력하면 Claude용 정밀 분석 프롬프트가 자동 생성됩니다</p>
         </div>
       </div>
+      <nav class="tab-nav">
+        <button class="tab-btn active" id="tabBtnPrompt" onclick="switchTab('prompt')">프롬프트 생성기</button>
+        <button class="tab-btn" id="tabBtnBaserate" onclick="switchTab('baserate')">베이스레이트 검증기</button>
+      </nav>
     </div>
-
-    <!-- 탭 네비게이션 -->
-    <nav class="tab-nav" role="tablist">
-      <button class="tab-btn" data-tab="prompt" role="tab" aria-selected="true">
-        ☯ 프롬프트 생성기
-      </button>
-      <button class="tab-btn" data-tab="baserate" role="tab" aria-selected="false">
-        📊 베이스레이트 검증기
-      </button>
-    </nav>
   </header>
 
   <main>
+    <div class="layout" id="tabPrompt">
 
-    <!-- ══════════════════════════════════════════
-         탭 1: 프롬프트 생성기
-    ══════════════════════════════════════════ -->
-    <div class="tab-panel" data-panel="prompt" aria-hidden="false">
-      <div class="layout">
+      <!-- LEFT: 입력 패널 -->
+      <section class="panel input-panel">
+        <h2 class="panel-title">사주 정보 입력</h2>
 
-        <!-- LEFT: 입력 패널 -->
-        <section class="panel input-panel">
-          <h2 class="panel-title">사주 정보 입력</h2>
-
-          <div class="form-group">
-            <label>성별</label>
-            <div class="radio-row">
-              <label class="radio-label"><input type="radio" name="gender" value="남" checked /> 남성</label>
-              <label class="radio-label"><input type="radio" name="gender" value="여" /> 여성</label>
-            </div>
+        <div class="form-group">
+          <label>성별</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="gender" value="남" checked /> 남성</label>
+            <label class="radio-label"><input type="radio" name="gender" value="여" /> 여성</label>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label>달력 종류</label>
-            <div class="radio-row">
-              <label class="radio-label"><input type="radio" name="calendarType" value="양력" checked /> 양력</label>
-              <label class="radio-label"><input type="radio" name="calendarType" value="음력" /> 음력</label>
-            </div>
+        <div class="form-group">
+          <label>달력 종류</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="calendarType" value="양력" checked /> 양력</label>
+            <label class="radio-label"><input type="radio" name="calendarType" value="음력" /> 음력</label>
           </div>
+        </div>
 
-          <div class="form-group" id="leapMonthGroup" style="display:none;">
-            <label class="check-label" style="padding:0.3rem 0;">
-              <input type="checkbox" id="isLeapMonth" /> 윤달(閏月)입니다
-            </label>
+        <div class="form-group" id="leapMonthGroup" style="display:none;">
+          <label class="check-label" style="padding:0.3rem 0;">
+            <input type="checkbox" id="isLeapMonth" /> 윤달(閏月)입니다
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="birthYear" id="birthYearLabel">태어난 해 (양력)</label>
+          <input type="number" id="birthYear" placeholder="예: 1985" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="birthMonth" id="birthMonthLabel">태어난 월</label>
+          <select id="birthMonth">
+            <option value="">월 선택</option>
+            <option value="1">1월</option><option value="2">2월</option>
+            <option value="3">3월</option><option value="4">4월</option>
+            <option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option>
+            <option value="9">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="birthDay" id="birthDayLabel">태어난 일</label>
+          <input type="number" id="birthDay" placeholder="예: 15" min="1" max="31" />
+        </div>
+
+        <div class="form-group" id="convertedDateNotice" style="display:none;"></div>
+
+        <div class="form-group">
+          <label for="birthHour">태어난 시 (시주)</label>
+          <select id="birthHour">
+            <option value="모름">시를 모름</option>
+            <option value="子시(23:30~01:30)">子시 (23:30~01:30)</option>
+            <option value="丑시(01:30~03:30)">丑시 (01:30~03:30)</option>
+            <option value="寅시(03:30~05:30)">寅시 (03:30~05:30)</option>
+            <option value="卯시(05:30~07:30)">卯시 (05:30~07:30)</option>
+            <option value="辰시(07:30~09:30)">辰시 (07:30~09:30)</option>
+            <option value="巳시(09:30~11:30)">巳시 (09:30~11:30)</option>
+            <option value="午시(11:30~13:30)">午시 (11:30~13:30)</option>
+            <option value="未시(13:30~15:30)">未시 (13:30~15:30)</option>
+            <option value="申시(15:30~17:30)">申시 (15:30~17:30)</option>
+            <option value="酉시(17:30~19:30)">酉시 (17:30~19:30)</option>
+            <option value="戌시(19:30~21:30)">戌시 (19:30~21:30)</option>
+            <option value="亥시(21:30~23:30)">亥시 (21:30~23:30)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="currentYear">분석 기준 연도</label>
+          <input type="number" id="currentYear" value="2025" min="1900" max="2100" />
+        </div>
+
+        <div class="form-group">
+          <label for="analysisRange">분석 기간</label>
+          <select id="analysisRange">
+            <option value="5">향후 5년</option>
+            <option value="10" selected>향후 10년</option>
+            <option value="20">향후 20년</option>
+            <option value="all">일생 전체</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>분석 요청 영역 (복수 선택)</label>
+          <div class="checkbox-grid">
+            <label class="check-label"><input type="checkbox" class="domain-check" value="결혼·동거·재혼" checked /> 결혼·동거</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="이혼·별거·이별" checked /> 이혼·이별</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="연애·이성운" checked /> 연애·이성</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="출산·자녀운" checked /> 출산·자녀</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="취업·승진·이직" checked /> 취업·승진</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="사업성패·창업" checked /> 사업·창업</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="재물획득·손실·투기" checked /> 재물·투기</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="건강이상·수술·질병" checked /> 건강·수술</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="사고·부상·재난" checked /> 사고·부상</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="소송·관재·법적문제" checked /> 소송·관재</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="이사·이민·해외운" /> 이사·이민</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="학업·시험·자격증" /> 학업·시험</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="명예·성공·몰락" checked /> 명예·성공</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="부모사망·형제갈등·가족운" /> 가족·육친</label>
+            <label class="check-label"><input type="checkbox" class="domain-check" value="사망·생사관련 극한운" /> 사망·생사</label>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="birthYear" id="birthYearLabel">태어난 해 (양력)</label>
-            <input type="number" id="birthYear" placeholder="예: 1985" min="1900" max="2050" />
+        <div class="form-group">
+          <label for="specialNote">추가 요청사항 (선택)</label>
+          <textarea id="specialNote" placeholder="예: 특정 시점의 운세 집중 분석, 특정 사건에 대한 원인 분석 등"></textarea>
+        </div>
+
+        <button class="btn-generate" onclick="generatePrompt()">프롬프트 생성하기 ☯</button>
+      </section>
+
+      <!-- RIGHT: 출력 패널 -->
+      <section class="panel output-panel">
+        <div class="output-header">
+          <h2 class="panel-title">생성된 프롬프트</h2>
+          <button class="btn-copy" id="copyBtn" onclick="copyPrompt()" disabled>복사하기</button>
+        </div>
+
+        <div class="output-box" id="outputBox">
+          <div class="placeholder">
+            <span class="placeholder-icon">☯</span>
+            <p>왼쪽에서 사주 정보를 입력하고<br/>프롬프트 생성하기를 클릭하세요</p>
+            <p class="placeholder-sub">생성된 프롬프트를 복사하여<br/>Claude에 붙여넣어 사용하세요</p>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="birthMonth" id="birthMonthLabel">태어난 월</label>
-            <select id="birthMonth">
-              <option value="">월 선택</option>
-              <option value="1">1월</option><option value="2">2월</option>
-              <option value="3">3월</option><option value="4">4월</option>
-              <option value="5">5월</option><option value="6">6월</option>
-              <option value="7">7월</option><option value="8">8월</option>
-              <option value="9">9월</option><option value="10">10월</option>
-              <option value="11">11월</option><option value="12">12월</option>
-            </select>
+        <div class="usage-guide">
+          <h3>사용 방법</h3>
+          <ol>
+            <li>좌측에 생년월일시와 성별 입력</li>
+            <li>분석받고 싶은 영역 선택</li>
+            <li><strong>프롬프트 생성하기</strong> 클릭</li>
+            <li><strong>복사하기</strong> 로 클립보드에 복사</li>
+            <li>Claude.ai 대화창에 붙여넣기</li>
+          </ol>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ 베이스레이트 검증기 탭 ============ -->
+    <div class="layout" id="tabBaserate" style="display:none;">
+
+      <!-- LEFT: 입력 패널 -->
+      <section class="panel input-panel">
+        <h2 class="panel-title">베이스레이트 검증 입력</h2>
+        <p class="baserate-intro">
+          "사건이 있던 해"와 "아무 일 없던 해"에 같은 합·충·형·삼합 규칙을 동일하게 적용해,
+          그 규칙이 실제로 사건을 변별하는지 숫자로 확인합니다.
+          신호가 단순히 자주 발생하는 것뿐이라면 변별력은 0%p에 가깝게 나옵니다.
+        </p>
+
+        <div class="form-group">
+          <label>성별</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brGender" value="남" checked /> 남성</label>
+            <label class="radio-label"><input type="radio" name="brGender" value="여" /> 여성</label>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="birthDay" id="birthDayLabel">태어난 일</label>
-            <input type="number" id="birthDay" placeholder="예: 15" min="1" max="31" />
+        <div class="form-group">
+          <label>달력 종류</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brCalendarType" value="양력" checked /> 양력</label>
+            <label class="radio-label"><input type="radio" name="brCalendarType" value="음력" /> 음력</label>
           </div>
+        </div>
 
-          <div class="form-group" id="convertedDateNotice" style="display:none;"></div>
+        <div class="form-group" id="brLeapMonthGroup" style="display:none;">
+          <label class="check-label" style="padding:0.3rem 0;">
+            <input type="checkbox" id="brIsLeapMonth" /> 윤달(閏月)입니다
+          </label>
+        </div>
 
-          <div class="form-group">
-            <label for="birthHour">태어난 시 (시주)</label>
-            <select id="birthHour">
-              <option value="모름">시를 모름</option>
-              <option value="子시(23:30~01:30)">子시 (23:30~01:30)</option>
-              <option value="丑시(01:30~03:30)">丑시 (01:30~03:30)</option>
-              <option value="寅시(03:30~05:30)">寅시 (03:30~05:30)</option>
-              <option value="卯시(05:30~07:30)">卯시 (05:30~07:30)</option>
-              <option value="辰시(07:30~09:30)">辰시 (07:30~09:30)</option>
-              <option value="巳시(09:30~11:30)">巳시 (09:30~11:30)</option>
-              <option value="午시(11:30~13:30)">午시 (11:30~13:30)</option>
-              <option value="未시(13:30~15:30)">未시 (13:30~15:30)</option>
-              <option value="申시(15:30~17:30)">申시 (15:30~17:30)</option>
-              <option value="酉시(17:30~19:30)">酉시 (17:30~19:30)</option>
-              <option value="戌시(19:30~21:30)">戌시 (19:30~21:30)</option>
-              <option value="亥시(21:30~23:30)">亥시 (21:30~23:30)</option>
-            </select>
+        <div class="form-group">
+          <label for="brBirthYear" id="brBirthYearLabel">태어난 해 (양력)</label>
+          <input type="number" id="brBirthYear" placeholder="예: 1973" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="brBirthMonth" id="brBirthMonthLabel">태어난 월</label>
+          <select id="brBirthMonth">
+            <option value="">월 선택</option>
+            <option value="1">1월</option><option value="2">2월</option>
+            <option value="3">3월</option><option value="4">4월</option>
+            <option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option>
+            <option value="9">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="brBirthDay" id="brBirthDayLabel">태어난 일</label>
+          <input type="number" id="brBirthDay" placeholder="예: 15" min="1" max="30" />
+        </div>
+
+        <div class="form-group" id="brConvertedDateNotice" style="display:none;"></div>
+
+        <div class="form-group">
+          <label for="brEndYear">분석 종료 연도 (보통 현재)</label>
+          <input type="number" id="brEndYear" placeholder="예: 2026" min="1900" max="2050" />
+        </div>
+
+        <div class="form-group">
+          <label for="brEventYears">실제 사건이 있었던 연도 (쉼표로 구분)</label>
+          <textarea id="brEventYears" placeholder="예: 1995, 1997, 2003, 2013"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>삼합 인정 기준</label>
+          <div class="radio-row">
+            <label class="radio-label"><input type="radio" name="brSamhapMode" value="complete" checked /> 완성만 인정 (3글자 모두)</label>
+            <label class="radio-label"><input type="radio" name="brSamhapMode" value="loose" /> 반합도 인정 (2글자만)</label>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="currentYear">분석 기준 연도</label>
-            <input type="number" id="currentYear" value="2025" min="1900" max="2100" />
+        <button class="btn-generate" onclick="runBaseRate()">베이스레이트 계산하기 ☯</button>
+      </section>
+
+      <!-- RIGHT: 출력 패널 -->
+      <section class="panel output-panel">
+        <div class="output-header">
+          <h2 class="panel-title">베이스레이트 결과</h2>
+        </div>
+
+        <div class="output-box" id="baserateOutputBox" style="white-space:normal;">
+          <div class="placeholder">
+            <span class="placeholder-icon">☯</span>
+            <p>왼쪽에 생년월일시와<br/>실제 사건 연도를 입력하세요</p>
+            <p class="placeholder-sub">신호가 사건 해와 무사건 해를<br/>실제로 구분해내는지 검증합니다</p>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="analysisRange">분석 기간</label>
-            <select id="analysisRange">
-              <option value="5">향후 5년</option>
-              <option value="10" selected>향후 10년</option>
-              <option value="20">향후 20년</option>
-              <option value="all">일생 전체</option>
-            </select>
-          </div>
+        <div class="usage-guide">
+          <h3>결과 읽는 법</h3>
+          <ol>
+            <li><strong>변별력(%p)</strong> = 사건해 히트율 − 무사건해 히트율</li>
+            <li>0%p에 가까우면 그 임계값은 변별력이 없음 (어느 해든 비슷하게 걸림)</li>
+            <li>음수면 오히려 무사건 해에서 더 자주 뜸 (역효과)</li>
+            <li>+20%p 이상이면서 표본이 충분할 때만 유의미하게 볼 수 있음</li>
+            <li>사건 4건 내외로는 통계적 확신을 줄 수 없으니 참고용으로만 활용</li>
+          </ol>
+        </div>
+      </section>
 
-          <div class="form-group">
-            <label>분석 요청 영역 (복수 선택)</label>
-            <div class="checkbox-grid">
-              <label class="check-label"><input type="checkbox" class="domain-check" value="결혼·동거·재혼" checked /> 결혼·동거</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="이혼·별거·이별" checked /> 이혼·이별</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="연애·이성운" checked /> 연애·이성</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="출산·자녀운" checked /> 출산·자녀</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="취업·승진·이직" checked /> 취업·승진</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="사업성패·창업" checked /> 사업·창업</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="재물획득·손실·투기" checked /> 재물·투기</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="건강이상·수술·질병" checked /> 건강·수술</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="사고·부상·재난" checked /> 사고·부상</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="소송·관재·법적문제" checked /> 소송·관재</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="이사·이민·해외운" /> 이사·이민</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="학업·시험·자격증" /> 학업·시험</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="명예·성공·몰락" checked /> 명예·성공</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="부모사망·형제갈등·가족운" /> 가족·육친</label>
-              <label class="check-label"><input type="checkbox" class="domain-check" value="사망·생사관련 극한운" /> 사망·생사</label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="specialNote">추가 요청사항 (선택)</label>
-            <textarea id="specialNote" placeholder="예: 특정 시점의 운세 집중 분석, 특정 사건에 대한 원인 분석 등"></textarea>
-          </div>
-
-          <button class="btn-generate" onclick="generatePrompt()">프롬프트 생성하기 ☯</button>
-        </section>
-
-        <!-- RIGHT: 출력 패널 -->
-        <section class="panel output-panel">
-          <div class="output-header">
-            <h2 class="panel-title">생성된 프롬프트</h2>
-            <button class="btn-copy" id="copyBtn" onclick="copyPrompt()" disabled>복사하기</button>
-          </div>
-
-          <div class="output-box" id="outputBox">
-            <div class="placeholder">
-              <span class="placeholder-icon">☯</span>
-              <p>왼쪽에서 사주 정보를 입력하고<br/>프롬프트 생성하기를 클릭하세요</p>
-              <p class="placeholder-sub">생성된 프롬프트를 복사하여<br/>Claude에 붙여넣어 사용하세요</p>
-            </div>
-          </div>
-
-          <div class="usage-guide">
-            <h3>사용 방법</h3>
-            <ol>
-              <li>좌측에 생년월일시와 성별 입력</li>
-              <li>분석받고 싶은 영역 선택</li>
-              <li><strong>프롬프트 생성하기</strong> 클릭</li>
-              <li><strong>복사하기</strong> 로 클립보드에 복사</li>
-              <li>Claude.ai 대화창에 붙여넣기</li>
-            </ol>
-          </div>
-        </section>
-
-      </div>
-    </div><!-- /tab-panel[prompt] -->
-
-
-    <!-- ══════════════════════════════════════════
-         탭 2: 베이스레이트 검증기
-    ══════════════════════════════════════════ -->
-    <div class="tab-panel" data-panel="baserate" aria-hidden="true">
-      <div class="br-layout">
-
-        <!-- 통계 요약 -->
-        <section class="panel br-panel">
-          <h2 class="panel-title">📊 예측 적중률 통계</h2>
-          <div id="br-stats">
-            <p class="br-empty">아직 기록된 예측이 없습니다.</p>
-          </div>
-          <div class="br-export-row">
-            <button id="br-export-btn" class="btn-secondary">CSV 내보내기</button>
-          </div>
-        </section>
-
-        <!-- 새 예측 기록 추가 -->
-        <section class="panel br-panel">
-          <h2 class="panel-title">➕ 예측 결과 기록</h2>
-          <form id="br-add-form" class="br-form" onsubmit="return false;">
-
-            <div class="form-group">
-              <label for="br-domain">예측 영역</label>
-              <select id="br-domain">
-                <option value="">영역 선택</option>
-                <option value="결혼·동거·재혼">결혼·동거·재혼</option>
-                <option value="이혼·별거·이별">이혼·별거·이별</option>
-                <option value="연애·이성운">연애·이성운</option>
-                <option value="출산·자녀운">출산·자녀운</option>
-                <option value="취업·승진·이직">취업·승진·이직</option>
-                <option value="사업성패·창업">사업성패·창업</option>
-                <option value="재물획득·손실·투기">재물획득·손실·투기</option>
-                <option value="건강이상·수술·질병">건강이상·수술·질병</option>
-                <option value="사고·부상·재난">사고·부상·재난</option>
-                <option value="소송·관재·법적문제">소송·관재·법적문제</option>
-                <option value="이사·이민·해외운">이사·이민·해외운</option>
-                <option value="학업·시험·자격증">학업·시험·자격증</option>
-                <option value="명예·성공·몰락">명예·성공·몰락</option>
-                <option value="부모사망·형제갈등·가족운">부모사망·형제갈등·가족운</option>
-                <option value="사망·생사관련 극한운">사망·생사관련 극한운</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="br-signal">사주에 해당 신호가 있었나요?</label>
-              <select id="br-signal">
-                <option value="true">🔴 있음 (충·형·합 등 관련 패턴 발견)</option>
-                <option value="false">⚪ 없음 (관련 패턴 없음)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="br-outcome">실제 결과</label>
-              <select id="br-outcome">
-                <option value="pending">⏳ 미확인 (아직 결과 미정)</option>
-                <option value="hit">✅ 적중 (예측한 사건 발생)</option>
-                <option value="miss">❌ 미적중 (예측한 사건 미발생)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="br-baserate-input">기저 확률(%) <span class="label-hint">— 일반 모집단 발생률, 선택</span></label>
-              <input type="number" id="br-baserate-input" placeholder="예: 15" min="0" max="100" step="0.1" />
-            </div>
-
-            <div class="form-group">
-              <label for="br-note">메모 (선택)</label>
-              <textarea id="br-note" placeholder="예: 甲午年 재성 충 → 재물 손실 예측. 실제로 투자 실패."></textarea>
-            </div>
-
-            <button type="submit" class="btn-generate">기록 추가하기 📝</button>
-          </form>
-        </section>
-
-        <!-- 기록 목록 -->
-        <section class="panel br-panel br-panel--full">
-          <h2 class="panel-title">📋 전체 기록</h2>
-          <div id="br-list">
-            <p class="br-empty">기록이 없습니다.</p>
-          </div>
-        </section>
-
-      </div>
-    </div><!-- /tab-panel[baserate] -->
-
+    </div>
   </main>
 
   <footer>
     <p>사주명리 기반 예측 프롬프트 생성기 · Claude AI 전용</p>
   </footer>
 
-  <!-- 기존 스크립트 -->
   <script src="js/data/solar_terms_db.js"></script>
   <script src="js/data/manse_100_db.js"></script>
   <script src="js/data/manseryeok.js"></script>
   <script src="js/saju.js"></script>
   <script src="js/prompt.js"></script>
-  <script src="js/main.js"></script>
-
-  <!-- 신규 스크립트 -->
   <script src="js/baserate.js"></script>
+  <script src="js/main.js"></script>
   <script src="js/baserate-ui.js"></script>
   <script src="js/tabs.js"></script>
 </body>
