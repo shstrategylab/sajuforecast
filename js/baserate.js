@@ -45,7 +45,17 @@ const BaserateEngine = (function () {
   }
 
   function saveRecords(records) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      return true;
+    } catch (e) {
+      // 시크릿/프라이빗 모드, 저장공간 부족, file:// 보안 제약 등으로
+      // localStorage 쓰기가 실패할 수 있다. 여기서 막지 않으면 예외가
+      // addRecord() → 폼 제출 핸들러까지 전파되어 화면이 아무 반응 없이
+      // 멈춘 것처럼 보이게 된다.
+      console.error('[BaserateEngine] localStorage 저장 실패:', e);
+      return false;
+    }
   }
 
   function generateId() {
@@ -68,8 +78,8 @@ const BaserateEngine = (function () {
       createdAt : new Date().toISOString(),
     };
     records.push(record);
-    saveRecords(records);
-    return record;
+    const saved = saveRecords(records);
+    return saved ? record : null;
   }
 
   function updateRecord(id, patch) {
