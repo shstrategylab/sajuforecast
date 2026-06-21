@@ -1,44 +1,44 @@
 /**
  * 24절기(Solar Terms) 압축 데이터베이스 — 1900년 ~ 2100년 (201년, 4,824건)
- * 날짜 + 시:분(절입시각, KST) 포함 버전
+ * 날짜 + 시:분(절입시각, KST) 포함, 기존 solarTermsDB / SolarTerms API와 호환되는 버전
  *
- * [생성 방법]
- * 1) 태양의 겉보기 지심 황경을 Jean Meeus, Astronomical Algorithms의
- *    "고정밀(Higher-accuracy)" 방법 — 지구 VSOP87 이론 기반 — 으로 계산
- *    (PyMeeus 라이브러리 사용. 단순 저정밀 공식보다 1~2자리 더 정밀함)
- * 2) ΔT(TT-UT, 지구 자전 불균일성 보정)를 NASA(Espenak) 다항식 모델로 보정
- *    (이 보정을 빼면 연도에 따라 1~2분 정도 체계적으로 틀어짐)
- * 3) 황경이 15도 간격 24개 기준값(소한=285도 ... 동지=270도)을 지나는
- *    정확한 순간(뉴턴법)을 구한 뒤 KST(UTC+9)로 환산
+ * [중요 — 이전 버전(압축 포맷 단독 노출) 수정 사항]
+ * 이전에 드린 파일은 내부 압축 포맷(getYearTerms 등)만 노출하고, 기존에 쓰시던
+ *   - 전역 배열 solarTermsDB (각 항목 {date, name, ...})
+ *   - 헬퍼 객체 SolarTerms.getAll() / getByYear() / getByDate() / getByName()
+ * 을 깨뜨렸습니다(브라우저에서 module.exports 가드 누락으로 즉시 에러까지 발생).
+ * 이번 버전은 내부 저장은 압축 포맷(_RAW)을 그대로 쓰면서, 로드 시점에
+ * solarTermsDB 배열과 SolarTerms 객체를 예전과 동일한 형태로 "펼쳐서" 만들어
+ * 기존 js/saju.js 등 호출부 코드를 그대로 쓸 수 있게 했습니다.
  *
- * [검증]
- * - NASA/USNO 공인 2026년 분점·지점 시각과 대조: 6~37초 이내 일치
- *   (2026 춘분 14:45:51 vs NASA 14:46:00 UTC,
- *    2026 추분 00:05:06 vs NASA 00:05:00 UTC 등)
- * - 나무위키 "입춘" 문서의 2026년 입춘 절입시각(2월 4일 05시 02분)과 정확히 일치
- * - 기존 solar_terms_db.js(2010~2050, 41년, 984건, 날짜만)와 대조 시 940건 일치.
- *   불일치 44건은 모두 (a) 원본 DB 자체의 오류이거나 (b) 절입 시각이 자정에
- *   매우 가까워(수분 이내) 어떤 정밀도로 계산해도 날짜가 하루 갈릴 수 있는
- *   경계 사례였습니다. 확인된 원본 DB 오류:
- *     · 2039년 24절기 전체가 통째로 하루씩 밀려 기록되어 있었음
- *       (위키백과 "동지" 문서: 2039-12-22 애동지로 명시. 원본은 12-21로 오기재)
- *     · 한로(寒露)가 2038, 2041, 2042, 2043, 2050년에 1~2일 오차
- *       (2050년은 한로 항목 자체가 통째로 빠져 있었음)
- *     · 백로(白露)가 2043년에 2일 오차
+ * [필드 변경 안내 — 꼭 확인해주세요]
+ * 기존 DB의 각 항목에는 date, name, lunar(음력 날짜), ganji_year(간지년),
+ * day_of_week(요일) 5개 필드가 있었습니다. 이번 버전에서:
+ *   - date, name, day_of_week 는 그대로 포함 (day_of_week는 날짜로부터
+ *     안전하게 재계산 가능하므로 문제 없음)
+ *   - time("HH:MM", 절입시각 KST), datetime(ISO 8601) 을 새로 추가
+ *   - lunar, ganji_year 는 이번 버전에 포함하지 않았습니다.
+ *     이 두 값은 "절기가 음력으로 며칠/몇 년에 해당하는가"를 뜻해서, 단순
+ *     공식이 아니라 정확한 음력 변환표(매월 삭/윤달 여부)가 있어야 맞게 계산
+ *     됩니다. 제가 임의로 근사해서 채우면 틀린 값이 들어갈 위험이 있어,
+ *     차라리 비워두고 알려드리는 쪽을 택했습니다.
+ *     js/saju.js, manseryeok.js 등에서 solarTermsDB[i].lunar 나 .ganji_year를
+ *     실제로 참조한다면 알려주세요 — manseryeok.js(보내주신 프로젝트에 이미
+ *     있는 음양력 변환 라이브러리)를 같이 보여주시면 그걸로 정확히 채워서
+ *     다시 드릴 수 있습니다.
  *
- * [정밀도에 대한 안내]
- * 시:분까지 계산했지만, 이 정도 천문 계산식의 현실적인 오차 한계는 약
- * ±30초~1분 수준입니다(한국천문연구원도 미 해군성천문대 천체력을 참고해
- * 절입시각을 추산한다고 밝히고 있어, 기관마다 1분 내외 차이가 날 수 있음).
- * 사주 시주(時柱) 판별처럼 "분" 단위가 결정적인 용도라면, 절입 시각이
- * 자정이나 시간 경계 부근(예: 자정 전후 ±5분)에 걸리는 경우만 한국천문연구원
- * 공식 자료로 재확인하는 것을 권장합니다.
+ * [날짜/시각 생성 방법 및 검증 — 이전 답변과 동일]
+ * Jean Meeus, Astronomical Algorithms의 VSOP87 기반 고정밀 태양 위치 계산
+ * (PyMeeus) + NASA(Espenak) ΔT 보정. NASA/USNO 공인 2026년 분점·지점 시각과
+ * 6~37초 이내로 일치, 나무위키 2026년 입춘 절입시각(2월4일 05시02분)과 일치.
+ * 기존 41년치 DB(날짜만)와 대조 시 940/984건 일치, 불일치는 모두 원본 DB의
+ * 오류(2039년 전체 하루 밀림, 한로/백로 일부 오기재 등) 또는 자정 부근 경계
+ * 사례로 확인됨.
  *
  * [포맷]
- * 절기 이름은 매년 24개가 항상 같은 순서로 반복되므로 TERM_NAMES에 한 번만
- * 저장합니다. 날짜+시간은 연도별로 "MMDDHHMM"(월,일,시,분)을 24개 이어붙인
- * 192자 문자열 하나로 저장합니다.
- *   예: _RAW[2026].slice(0,8) === "01050823" → 2026년 소한 = 01-05 08:23
+ * 내부적으로는 절기 이름(TERM_NAMES, 24개 고정 순서)과 연도별 "MMDDHHMM"
+ * 24개를 이어붙인 192자 문자열(_RAW)만 저장하고, 아래에서 이를 펼쳐
+ * solarTermsDB 배열을 만듭니다.
  */
 
 const TERM_NAMES = ["소한", "대한", "입춘", "우수", "경칩", "춘분", "청명", "곡우", "입하", "소만", "망종", "하지", "소서", "대서", "입추", "처서", "백로", "추분", "한로", "상강", "입동", "소설", "대설", "동지"];
@@ -247,69 +247,61 @@ const _RAW = {
 2100:"010516280120094502040359021823360305213403202203040501430420082405051820052106560605215706211431070707580723012308071753082308470907211409230700100813301023170011071719112215081207103912220450"
 };
 
-/**
- * 특정 연도의 24절기를 모두 반환합니다.
- * @param {number} year
- * @returns {Array<{name: string, date: string, time: string, datetime: string}>|null}
- *   date: "YYYY-MM-DD" / time: "HH:MM" (KST) / datetime: ISO 8601 ("YYYY-MM-DDTHH:MM:00+09:00")
- */
-function getYearTerms(year) {
-  const raw = _RAW[year];
-  if (!raw) return null;
+const _DOW = ["일","월","화","수","목","금","토"];
+
+// _RAW를 기존과 동일한 평탄화 배열 형태로 펼침 (1900~2100, 4,824건)
+const solarTermsDB = (function () {
   const out = [];
-  for (let i = 0; i < 24; i++) {
-    const chunk = raw.slice(i * 8, i * 8 + 8);
-    const mm = chunk.slice(0, 2), dd = chunk.slice(2, 4);
-    const hh = chunk.slice(4, 6), mi = chunk.slice(6, 8);
-    out.push({
-      name: TERM_NAMES[i],
-      date: `${year}-${mm}-${dd}`,
-      time: `${hh}:${mi}`,
-      datetime: `${year}-${mm}-${dd}T${hh}:${mi}:00+09:00`,
-    });
+  const years = Object.keys(_RAW).map(Number).sort((a, b) => a - b);
+  for (const year of years) {
+    const raw = _RAW[year];
+    for (let i = 0; i < 24; i++) {
+      const chunk = raw.slice(i * 8, i * 8 + 8);
+      const mm = chunk.slice(0, 2), dd = chunk.slice(2, 4);
+      const hh = chunk.slice(4, 6), mi = chunk.slice(6, 8);
+      const date = `${year}-${mm}-${dd}`;
+      const dow = _DOW[new Date(year, Number(mm) - 1, Number(dd)).getDay()];
+      out.push({
+        date,
+        name: TERM_NAMES[i],
+        time: `${hh}:${mi}`,
+        datetime: `${date}T${hh}:${mi}:00+09:00`,
+        day_of_week: dow,
+      });
+    }
   }
   return out;
-}
+})();
 
-/**
- * 특정 연도 + 절기 이름으로 정보를 바로 가져옵니다.
- * @param {number} year
- * @param {string} name 예: "입춘"
- * @returns {{name: string, date: string, time: string, datetime: string}|null}
- */
-function getTerm(year, name) {
-  const idx = TERM_NAMES.indexOf(name);
-  if (idx === -1) return null;
-  const terms = getYearTerms(year);
-  return terms ? terms[idx] : null;
-}
+// 기존과 동일한 헬퍼 API
+const SolarTerms = {
+  // 전체 데이터 가져오기
+  getAll: () => solarTermsDB,
 
-/** 기존 함수명과의 호환을 위한 별칭: 날짜 문자열만 반환 */
-function getTermDate(year, name) {
-  const t = getTerm(year, name);
-  return t ? t.date : null;
-}
+  // 특정 연도의 절기만 필터링
+  getByYear: (year) => {
+    const yearStr = String(year);
+    return solarTermsDB.filter(item => item.date.startsWith(yearStr));
+  },
 
-/**
- * 기존 solar_terms_db.js와 같은 평탄화된 배열 형태로 펼쳐서 반환합니다.
- * (lunar/ganji_year/day_of_week는 저장하지 않으므로, 필요하면 호출부에서
- *  Date 객체나 만세력 변환 함수로 계산하세요.)
- * @param {number} startYear
- * @param {number} endYear
- * @returns {Array<{date: string, time: string, datetime: string, name: string}>}
- */
-function expandAll(startYear = 1900, endYear = 2100) {
-  const out = [];
-  for (let y = startYear; y <= endYear; y++) {
-    const terms = getYearTerms(y);
-    if (terms) out.push(...terms);
-  }
-  return out;
-}
+  // 특정 날짜에 절기가 있는지 확인
+  getByDate: (dateStr) => {
+    // dateStr 포맷: 'YYYY-MM-DD'
+    return solarTermsDB.find(item => item.date === dateStr) || null;
+  },
 
-module.exports = { TERM_NAMES, getYearTerms, getTerm, getTermDate, expandAll };
+  // 특정 절기 이름으로 조회 (예: '입춘')
+  getByName: (name) => {
+    return solarTermsDB.filter(item => item.name === name);
+  },
+};
 
-// 브라우저 등 module이 없는 환경을 위한 안전장치
+// 일반 <script> 태그 로드 환경(브라우저, file://)을 위한 전역 노출.
 if (typeof window !== 'undefined') {
-  window.solarTermsDB = { TERM_NAMES, getYearTerms, getTerm, getTermDate, expandAll };
+  window.SolarTerms = SolarTerms;
+  window.solarTermsDB = solarTermsDB;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SolarTerms;
+  module.exports.default = SolarTerms;
 }
