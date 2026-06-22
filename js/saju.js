@@ -274,6 +274,41 @@ function getBaekho(juList) {
   return hits;
 }
 
+// ── 천간 복음(天干伏吟) 탐지 ─────────────────────────────────
+// 세운 천간이 원국의 특정 천간과 동일한 경우를 탐지한다.
+// 원국 천간 목록(chars에서 천간만 추출)과 세운 천간을 비교.
+// 반환: 복음이 발생하는 원국 위치 목록 (예: ['월간(甲)'])
+// 활용: baserate.js의 cheonganSignals에서 사용
+function getCheonganBogeum(seunCg, wongukChars) {
+  // wongukChars: 사주 8자 배열 (천간+지지 섞임) — 천간만 필터
+  const positions = ['연간','연지','월간','월지','일간','일지','시간','시지'];
+  const hits = [];
+  wongukChars.forEach((c, idx) => {
+    // 천간만 (CHEONGAN 배열에 포함된 글자)
+    if (CHEONGAN.includes(c) && c === seunCg) {
+      hits.push(positions[idx] + '(' + c + ')');
+    }
+  });
+  return hits;
+}
+
+// ── 천간합(天干合) 원국 발동 탐지 ────────────────────────────
+// 세운 천간이 원국의 어떤 천간과 천간합을 이루는지 탐지한다.
+// 반환: 합이 발생하는 원국 위치·합화 오행 목록
+// 활용: baserate.js의 cheonganSignals에서 사용
+function getCheonganHapWithWonguk(seunCg, wongukChars) {
+  const positions = ['연간','연지','월간','월지','일간','일지','시간','시지'];
+  const hits = [];
+  wongukChars.forEach((c, idx) => {
+    if (!CHEONGAN.includes(c)) return;
+    const hapResult = getCheonganHap(seunCg, c);
+    if (hapResult) {
+      hits.push(positions[idx] + '(' + c + ')→' + hapResult);
+    }
+  });
+  return hits;
+}
+
 // ── 공망 (空亡) ──────────────────────────────────────────────
 const GONGMANG_TABLE = [
   { range: ['甲子','乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉'], gongmang: ['戌','亥'] },
