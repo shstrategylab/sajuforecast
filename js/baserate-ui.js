@@ -45,6 +45,7 @@ function runBaseRate() {
   const inputYear = parseInt(document.getElementById('brBirthYear').value);
   const inputMonth = parseInt(document.getElementById('brBirthMonth').value);
   const inputDay = parseInt(document.getElementById('brBirthDay').value);
+  const hourStr = document.getElementById('brBirthHour').value;
   const endYear = parseInt(document.getElementById('brEndYear').value);
   const eventYears = parseEventYears(document.getElementById('brEventYears').value);
 
@@ -81,22 +82,26 @@ function runBaseRate() {
     year = inputYear; month = inputMonth; day = inputDay;
   }
 
-  // ── 원국 산출 (시주는 베이스레이트 계산에 쓰지 않음 — 연/월/일/시 4지지 중
-  //    시지는 출생시각 모르면 비교 불가하므로, 시 정보는 입력칸이 없는 이 탭에서는
-  //    '모름'으로 고정해 연/월/일 3기둥만으로 계산한다) ──
+  // ── 원국 산출 (시간을 입력했으면 시지까지 포함, '모름'이면 연/월/일 3기둥만으로 계산) ──
   let saju;
   try {
-    saju = calcSaju(year, month, day, '모름', gender);
+    saju = calcSaju(year, month, day, hourStr, gender);
   } catch (e) {
     showToast('사주 계산 중 오류가 발생했습니다.', true);
     console.error(e);
     return;
   }
 
-  const wonguk4 = [saju.yeonju[1], saju.wolju[1], saju.ilju[1], null]; // 시지 없음
+  const wonguk4 = [
+    saju.yeonju[1], saju.wolju[1], saju.ilju[1],
+    saju.siju ? saju.siju[1] : null // 시간 '모름'이면 siju가 null → 시지 비교 제외
+  ];
+  const wonguk8 = saju.siju
+    ? [saju.yeonju[0], saju.yeonju[1], saju.wolju[0], saju.wolju[1], saju.ilju[0], saju.ilju[1], saju.siju[0], saju.siju[1]]
+    : [saju.yeonju[0], saju.yeonju[1], saju.wolju[0], saju.wolju[1], saju.ilju[0], saju.ilju[1]];
   const ilgan = saju.ilgan;
 
-  const result = calcBaseRate(year, endYear, wonguk4, ilgan, eventYears, samhapMode);
+  const result = calcBaseRate(year, endYear, wonguk4, ilgan, eventYears, samhapMode, wonguk8);
   renderBaseRateResult(result, saju, { year, month, day, gender });
 }
 
@@ -107,8 +112,9 @@ function renderBaseRateResult(result, saju, birthInfo) {
 
   // 상단 요약
   html += '<div class="br-summary">';
-  html += '<p><strong>원국(연/월/일주):</strong> ' + saju.yeonju + ' · ' + saju.wolju + ' · ' + saju.ilju
-    + ' <span class="br-note">(시주는 비교 대상에서 제외 — 출생시각 무관 비교)</span></p>';
+  html += '<p><strong>원국' + (saju.siju ? '(연/월/일/시주)' : '(연/월/일주)') + ':</strong> ' + saju.yeonju + ' · ' + saju.wolju + ' · ' + saju.ilju
+    + (saju.siju ? ' · ' + saju.siju : '')
+    + (saju.siju ? '' : ' <span class="br-note">(시를 모름으로 입력해 시주는 비교 대상에서 제외됨)</span>') + '</p>';
   html += '<p><strong>분석 기간:</strong> ' + birthInfo.year + '년 ~ ' + result.endYear + '년 (총 ' + result.totalYears + '년)</p>';
   html += '<p><strong>사건 연도:</strong> ' + result.eventYearCount + '건 / <strong>무사건 연도:</strong> ' + result.nonEventYearCount + '년</p>';
   html += '<p><strong>삼합 기준:</strong> ' + (result.samhapMode === 'complete' ? '완성만 인정' : '반합도 인정') + '</p>';
