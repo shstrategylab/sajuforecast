@@ -246,9 +246,16 @@ const CHEONEULGWIIN = {
   '辛': ['寅','午'],
   '壬': ['卯','巳'], '癸': ['卯','巳']
 };
+// 반환 형식: { targets: ['寅','午'], found: ['寅'] }
+//   targets : 일간 기준 천을귀인 후보 지지 (원국 보유 여부 무관)
+//   found   : 원국 지지 중 실제로 있는 것 (없으면 빈 배열)
+// ※ 기존에는 found 배열만 반환해 원국에 없으면 '없음'으로 출력되는 버그가 있었음.
+//   이제 targets를 항상 함께 넘겨 프롬프트에서 "원국 내 부재, 대운·세운 발동 시 유효"
+//   형태로 올바르게 표현할 수 있도록 수정한다.
 function getCheoneulgwiin(ilgan, jijis) {
   const targets = CHEONEULGWIIN[ilgan] || [];
-  return targets.filter(t => jijis.includes(t));
+  const found = targets.filter(t => jijis.includes(t));
+  return { targets, found };
 }
 
 // ── 백호살 (白虎殺) ──────────────────────────────────────────
