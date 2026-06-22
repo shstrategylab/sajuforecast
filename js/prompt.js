@@ -419,7 +419,16 @@ ${precisionDesc}
   - 공망(空亡, 연주 기준·보조) : ${gongmangYeonju.length ? gongmangYeonju.join('·') : '없음'}
   - 역마살(驛馬殺) : ${yeokma || '없음'}
   - 도화살(桃花殺) : ${dohwa || '없음'}
-  - 천을귀인(天乙貴人, 길신) : ${cheoneulgwiin.length ? cheoneulgwiin.join('·') : '없음'}
+  - 천을귀인(天乙貴人, 길신) : ${
+    (() => {
+      const targets = (cheoneulgwiin && cheoneulgwiin.targets) ? cheoneulgwiin.targets : [];
+      const found   = (cheoneulgwiin && cheoneulgwiin.found)   ? cheoneulgwiin.found   : [];
+      if (!targets.length) return '없음';
+      if (found.length) {
+        return found.join('·') + ' (원국 내 보유 — 일간 ' + ilgan + ' 기준 후보: ' + targets.join('·') + ')';
+      }
+      return '원국 내 부재 (일간 ' + ilgan + ' 기준 후보: ' + targets.join('·') + ') — 대운·세운에서 ' + targets.join('·') + '이 오는 해에 귀인 발동으로 해석';
+    })()
   - 백호살(白虎殺, 흉살) 후보 : ${baekho.length ? baekho.join(', ') : '없음'} ${baekhoIlju ? '— ⚠ 일주 자체가 백호이므로 정통 기준상 성립' : '(일주가 백호가 아니므로 정통 기준상으로는 약하게 적용하거나 참고만 할 것)'}
 
   분석 지시사항:
